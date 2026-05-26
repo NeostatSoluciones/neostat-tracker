@@ -1,0 +1,1474 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Neostat">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Neostat · Centro de control</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<style>
+:root{
+  --bg:#070708; --bg-2:#0c0c0e;
+  --surface:rgba(255,255,255,.025); --surface-2:rgba(255,255,255,.045);
+  --border:rgba(255,255,255,.07); --border-strong:rgba(255,255,255,.14);
+  --text:#fafafa; --muted:#8a8a8e; --muted-2:#5a5a5e;
+
+  /* Paleta Neostat */
+  --accent:#3b82f6;          /* azul brillante */
+  --accent-2:#1d4ed8;        /* azul profundo */
+  --accent-soft:rgba(59,130,246,.14);
+  --accent-glow:rgba(59,130,246,.35);
+
+  /* Estados con más contraste */
+  --online:#22c55e;          /* verde vibrante */
+  --comida:#fb923c;          /* naranja vibrante */
+  --bano:#06b6d4;            /* cyan */
+  --brk:#a855f7;             /* morado vibrante */
+  --offline:#6b7280;         /* gris */
+  --danger:#ef4444;          /* rojo */
+
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --sans:'Manrope',system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-weight:400;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
+body{
+  min-height:100vh; min-height:100dvh;
+  background:
+    radial-gradient(900px 500px at 80% -10%, rgba(59,130,246,.10), transparent 60%),
+    radial-gradient(700px 400px at -10% 30%, rgba(29,78,216,.05), transparent 55%),
+    radial-gradient(500px 300px at 110% 80%, rgba(34,197,94,.04), transparent 50%),
+    linear-gradient(180deg,#050506 0%, #0a0a0b 100%);
+  background-attachment: fixed;
+  padding-top: var(--safe-top);
+}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer;font-size:inherit}
+input,select,textarea{font-family:inherit;color:inherit;font-size:inherit}
+
+/* ═════════ LOGO INLINE ═════════ */
+.logo-n{display:inline-block;vertical-align:middle;width:28px;height:28px}
+.logo-n .l-pillar{fill:#64748b}
+.logo-n .l-diag{fill:#cbd5e1}
+.logo-n .l-dot{fill:var(--accent)}
+
+/* ═════════ LOGIN ═════════ */
+.login{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:32px 20px}
+.login-card{
+  width:min(440px,100%);
+  background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+  border:1px solid var(--border); border-radius:24px; padding:40px 32px;
+  backdrop-filter: blur(10px); text-align:center;
+}
+.brand-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px}
+.brand-row .logo-n{width:38px;height:38px}
+.brand-row .brand-text{font-family:var(--serif);font-style:italic;font-size:26px;letter-spacing:.5px}
+.login h1{font-family:var(--serif);font-weight:500;font-size:36px;line-height:1.05;margin:18px 0 6px;letter-spacing:-.5px}
+.login h1 em{color:var(--accent);font-style:italic;font-weight:500}
+.login p{color:var(--muted);margin:0 0 28px;font-size:13px;line-height:1.6}
+#googleBtn{display:flex;justify-content:center;min-height:44px}
+.err{color:var(--danger);font-size:12px;margin-top:14px;font-family:var(--mono);letter-spacing:.5px}
+
+/* ═════════ APP CHROME ═════════ */
+.app{padding:0 0 calc(80px + var(--safe-bottom));min-height:100vh;min-height:100dvh}
+.app.hidden{display:none}
+.topbar{
+  position:sticky; top:0; z-index:10;
+  display:flex; justify-content:space-between; align-items:center;
+  padding:14px 18px 14px;
+  background:rgba(7,7,8,.85); backdrop-filter: blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.topbar .title-block{display:flex;align-items:center;gap:10px}
+.topbar .title{font-family:var(--serif);font-weight:500;font-size:22px;line-height:1;letter-spacing:-.3px;margin:0}
+.topbar .title em{color:var(--accent);font-style:italic}
+.profile-btn{
+  display:flex;align-items:center;gap:8px;padding:5px 10px 5px 5px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:999px;
+}
+.profile-btn img{width:28px;height:28px;border-radius:50%}
+.profile-btn .pn{font-size:13px;font-weight:500;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:540px){ .profile-btn .pn{display:none} }
+.profile-btn .role-tag{
+  font-size:9px;letter-spacing:1px;text-transform:uppercase;font-family:var(--mono);
+  color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:4px;
+}
+.profile-btn .role-tag.sup{color:#fff;background:var(--accent);}
+
+.tab-content{padding:20px 18px}
+.tab-content.hidden{display:none}
+
+/* ═════════ BOTTOM NAV ═════════ */
+.bottom-nav{
+  position:fixed; left:0; right:0; bottom:0; z-index:20;
+  display:grid; grid-template-columns:repeat(4,1fr);
+  background:rgba(7,7,8,.92); backdrop-filter: blur(18px);
+  border-top:1px solid var(--border);
+  padding: 8px 0 calc(8px + var(--safe-bottom));
+}
+.bottom-nav.sup{grid-template-columns:repeat(5,1fr)}
+.bottom-nav button{
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:6px 4px; color:var(--muted); font-size:9px; letter-spacing:1px;
+  text-transform:uppercase; font-family:var(--mono); font-weight:500;
+  transition:color .15s;
+}
+.bottom-nav button.active{color:var(--accent)}
+.bottom-nav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6}
+
+/* ═════════ TITULOS ═════════ */
+.section-title{font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:500}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin:0 0 14px}
+.date-label{font-family:var(--mono);font-size:10px;color:var(--muted-2);letter-spacing:1px;text-transform:uppercase}
+
+/* ═════════ SUMMARY ═════════ */
+.summary{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:1px;
+  background:var(--border);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:24px;
+}
+.sum-cell{padding:14px 10px;background:var(--bg-2);text-align:center}
+.sum-label{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:var(--mono);display:flex;align-items:center;gap:5px;justify-content:center}
+.sum-dot{width:6px;height:6px;border-radius:50%}
+.sum-value{font-family:var(--serif);font-weight:400;font-size:30px;line-height:1}
+.sum-value .of{color:var(--muted-2);font-size:13px;margin-left:2px}
+@media (max-width:480px){.summary{grid-template-columns:repeat(5,1fr)} .sum-value{font-size:22px} .sum-label{font-size:8px;letter-spacing:.8px}}
+
+/* ═════════ MI ESTADO (AGENTE) ═════════ */
+.my-state{
+  background:linear-gradient(180deg, rgba(59,130,246,.06), rgba(59,130,246,.01));
+  border:1px solid var(--border); border-radius:18px; padding:22px 20px; margin-bottom:20px;
+}
+.my-state .hello{font-family:var(--serif);font-style:italic;font-size:22px;line-height:1.1}
+.my-state .now-state{display:flex;align-items:center;gap:10px;margin-top:10px;font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.state-pill-big{display:inline-flex;align-items:center;gap:8px;border:1px solid currentColor;border-radius:999px;padding:6px 14px;font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase}
+.state-pill-big .dot{width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 8px currentColor}
+.state-pill-big[data-state="online"]{color:var(--online)}
+.state-pill-big[data-state="comida"]{color:var(--comida)}
+.state-pill-big[data-state="bano"]{color:var(--bano)}
+.state-pill-big[data-state="break"]{color:var(--brk)}
+.state-pill-big[data-state="offline"]{color:var(--offline)}
+.timer-big{font-family:var(--mono);font-size:30px;font-weight:300;margin-top:10px;letter-spacing:1px}
+
+.state-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:18px}
+.state-btn{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:14px;padding:14px 4px 12px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;transition:all .12s ease;min-height:78px}
+.state-btn:active{transform:scale(.96)}
+.state-btn.active{border-color:currentColor;background:rgba(255,255,255,.06);box-shadow:0 0 0 1px currentColor inset, 0 0 20px -10px currentColor}
+.state-btn[data-state="online"]{color:var(--online)}
+.state-btn[data-state="comida"]{color:var(--comida)}
+.state-btn[data-state="bano"]{color:var(--bano)}
+.state-btn[data-state="break"]{color:var(--brk)}
+.state-btn[data-state="offline"]{color:var(--offline)}
+.state-btn .sb-dot{width:9px;height:9px;border-radius:50%;background:currentColor;box-shadow:0 0 10px currentColor}
+.state-btn .sb-label{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--text);font-weight:500}
+.state-btn .sb-time{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.state-btn.active .sb-time{color:currentColor}
+
+.punch-strip{display:grid;grid-template-columns:repeat(4,1fr);background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:16px;font-family:var(--mono);font-size:11px}
+.punch-strip > div{text-align:center}
+.punch-strip .p-lab{color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;font-size:9px;display:block;margin-bottom:4px}
+.punch-strip .p-val{font-size:14px;color:var(--text)}
+
+/* ═════════ CAMPAÑA ACTIVA (AGENTE) ═════════ */
+.campaign-selector{
+  display:flex;align-items:center;gap:12px;
+  background:linear-gradient(135deg, rgba(59,130,246,.08), rgba(34,197,94,.04));
+  border:1px solid rgba(59,130,246,.25);
+  border-radius:14px; padding:14px 18px; margin-bottom:14px; cursor:pointer;
+  transition:all .15s;
+}
+.campaign-selector:active{transform:scale(.99)}
+.campaign-selector .ico{
+  width:36px;height:36px;border-radius:10px;background:var(--accent);
+  display:grid;place-items:center;color:#fff;font-weight:700;font-family:var(--mono);font-size:14px;
+}
+.campaign-selector .info{flex:1;min-width:0}
+.campaign-selector .info .lab{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.campaign-selector .info .val{font-size:14px;font-weight:500;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.campaign-selector .info .val.none{color:var(--muted);font-style:italic}
+.campaign-selector .chevron{color:var(--muted);font-family:var(--mono)}
+
+/* ═════════ ACTIVIDAD ═════════ */
+.act-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
+.act-btn{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-radius:14px;background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);transition:all .12s}
+.act-btn:active{transform:scale(.97);background:rgba(59,130,246,.12)}
+.act-btn .ab-text{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent)}
+.act-btn .ab-count{font-family:var(--mono);font-size:20px;color:var(--text);font-weight:500}
+
+/* ═════════ TEAM CARDS ═════════ */
+.grid-team{display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:14px}
+.team-card{position:relative;background:linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,.008));border:1px solid var(--border);border-radius:16px;padding:18px 20px 16px;transition:all .15s}
+.team-card.is-online::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;background:linear-gradient(180deg, transparent, var(--online), transparent);border-radius:2px}
+.team-card:active{transform:scale(.99)}
+.tc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.tc-name{font-family:var(--serif);font-weight:500;font-size:22px;line-height:1;letter-spacing:-.2px}
+.tc-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-strong);border-radius:999px;padding:4px 9px;font-size:9px;letter-spacing:1.3px;text-transform:uppercase;font-family:var(--mono);color:var(--muted)}
+.tc-pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.tc-pill[data-state="online"]{color:var(--online);border-color:rgba(34,197,94,.4)}
+.tc-pill[data-state="comida"]{color:var(--comida);border-color:rgba(251,146,60,.4)}
+.tc-pill[data-state="bano"]{color:var(--bano);border-color:rgba(6,182,212,.4)}
+.tc-pill[data-state="break"]{color:var(--brk);border-color:rgba(168,85,247,.4)}
+.tc-pill[data-state="offline"]{color:var(--offline)}
+
+.tc-status{display:flex;justify-content:space-between;align-items:baseline;padding-bottom:10px;border-bottom:1px dashed var(--border);margin-bottom:10px}
+.tc-status .lab{font-family:var(--mono);font-size:9px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted)}
+.tc-status .val{font-family:var(--mono);font-size:22px;font-weight:300}
+.tc-bd{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}
+.tc-bd .bd{background:rgba(255,255,255,.022);border-radius:8px;padding:7px 4px;text-align:center}
+.tc-bd .bd-d{width:5px;height:5px;border-radius:50%;margin:0 auto 4px}
+.tc-bd .bd-v{font-family:var(--mono);font-size:11px;font-weight:500}
+.tc-bd .bd-l{font-family:var(--mono);font-size:8px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.tc-acts{display:flex;justify-content:space-between;padding-top:10px;border-top:1px dashed var(--border);font-family:var(--mono);font-size:10px;color:var(--muted)}
+.tc-acts strong{color:var(--text);font-weight:500;font-size:12px}
+.tc-actions{display:flex;gap:6px;margin-top:10px}
+.tc-actions button{flex:1;padding:7px 8px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid var(--border);font-family:var(--mono);font-size:9px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);transition:all .12s}
+.tc-actions button:active{transform:scale(.97);color:var(--text);border-color:var(--border-strong)}
+.tc-actions button.primary{background:var(--accent-soft);border-color:rgba(59,130,246,.35);color:var(--accent)}
+.tc-actions button.danger{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);color:var(--danger)}
+
+/* ═════════ CHAT ═════════ */
+.chat-wrap{display:grid;grid-template-rows:auto 1fr auto;height:calc(100vh - 60px - 80px - var(--safe-bottom) - var(--safe-top));min-height:400px}
+.chat-tabs{display:flex;gap:6px;overflow-x:auto;padding:0 0 14px;scrollbar-width:none}
+.chat-tabs::-webkit-scrollbar{display:none}
+.chat-tab{padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.03);border:1px solid var(--border);white-space:nowrap;font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+.chat-tab.active{background:var(--accent);color:#fff;border-color:transparent}
+.chat-tab .dot{width:6px;height:6px;border-radius:50%;background:var(--online)}
+.chat-tab[data-state="offline"] .dot{background:var(--offline)}
+.chat-tab[data-state="comida"] .dot{background:var(--comida)}
+.chat-tab[data-state="bano"] .dot{background:var(--bano)}
+.chat-tab[data-state="break"] .dot{background:var(--brk)}
+
+.chat-list{overflow-y:auto;padding:8px 2px;display:flex;flex-direction:column;gap:10px}
+.chat-list::-webkit-scrollbar{width:4px}
+.chat-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.msg{max-width:80%;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:14px;padding:10px 14px;align-self:flex-start}
+.msg.mine{align-self:flex-end;background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.25)}
+.msg.meet{background:linear-gradient(135deg, rgba(59,130,246,.1), rgba(34,197,94,.06));border-color:rgba(59,130,246,.35);align-self:stretch;max-width:none}
+.msg-from{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--text);margin-bottom:2px}
+.msg-meta{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.8px;margin-bottom:4px;display:flex;gap:8px;align-items:center}
+.msg-text{font-size:14px;line-height:1.5;color:#e5e5e5;word-wrap:break-word}
+.meet-cta{display:inline-flex;align-items:center;gap:8px;margin-top:8px;background:var(--accent);color:#fff;padding:8px 16px;border-radius:10px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;text-decoration:none;transition:transform .1s}
+.meet-cta:active{transform:scale(.97)}
+
+.chat-input-row{display:flex;gap:8px;padding:10px 0 4px;align-items:flex-end;border-top:1px solid var(--border);background:rgba(7,7,8,.9);position:sticky;bottom:0}
+.chat-input-row textarea{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:10px 14px;font-size:14px;color:var(--text);min-height:42px;max-height:120px;resize:none;outline:none}
+.chat-input-row textarea:focus{border-color:var(--accent)}
+.chat-input-row button{width:42px;height:42px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;transition:transform .1s}
+.chat-input-row button:active{transform:scale(.92)}
+.chat-input-row button.meet{background:rgba(34,197,94,.15);color:var(--online);border:1px solid rgba(34,197,94,.35)}
+.chat-input-row button svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2}
+
+/* ═════════ ADMIN ═════════ */
+.admin-subtabs{display:flex;gap:6px;margin-bottom:18px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:999px;padding:4px;width:fit-content}
+.admin-subtabs button{padding:8px 18px;border-radius:999px;font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:500}
+.admin-subtabs button.active{background:var(--accent);color:#fff}
+
+.admin-list{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.admin-row{
+  display:flex;align-items:center;gap:12px;padding:14px 16px;
+  background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:12px;
+}
+.admin-row .ar-main{flex:1;min-width:0}
+.admin-row .ar-name{font-family:var(--serif);font-size:18px;font-weight:500;letter-spacing:-.2px}
+.admin-row .ar-sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-row .ar-tag{font-family:var(--mono);font-size:9px;letter-spacing:1.2px;text-transform:uppercase;padding:3px 8px;border-radius:5px;background:rgba(255,255,255,.04);color:var(--muted)}
+.admin-row .ar-tag.active{color:var(--online);background:rgba(34,197,94,.1)}
+.admin-row .ar-tag.inactive{color:var(--danger);background:rgba(239,68,68,.1)}
+.admin-row .ar-tag.sup{color:var(--accent);background:var(--accent-soft)}
+.admin-row .ar-actions{display:flex;gap:6px}
+.admin-row .ar-actions button{
+  padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.04);
+  border:1px solid var(--border);font-family:var(--mono);font-size:10px;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--muted);
+}
+.admin-row .ar-actions button.danger{color:var(--danger);border-color:rgba(239,68,68,.25)}
+.admin-row .ar-actions button.primary{color:var(--accent);border-color:rgba(59,130,246,.25)}
+
+.add-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:14px;border-radius:12px;
+  background:var(--accent);color:#fff;font-weight:600;font-family:var(--mono);
+  font-size:11px;letter-spacing:1.5px;text-transform:uppercase;
+  transition:transform .1s;
+}
+.add-btn:active{transform:scale(.98)}
+
+/* ═════════ MODAL ═════════ */
+.modal-wrap{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);display:none;place-items:center;padding:20px;z-index:100}
+.modal-wrap.open{display:grid}
+.modal{background:#0e0e10;border:1px solid var(--border-strong);border-radius:20px;padding:26px 24px;width:min(480px,100%);max-height:85vh;overflow-y:auto;position:relative}
+.modal h2{font-family:var(--serif);font-weight:500;font-size:26px;margin:0 0 8px}
+.modal h2 em{font-style:italic;color:var(--accent)}
+.modal-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--muted);font-size:22px}
+.modal-close:active{background:var(--surface);color:var(--text)}
+
+.form-grid{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+.form-grid label{display:flex;flex-direction:column;gap:6px}
+.form-grid label span{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)}
+.form-grid input, .form-grid select, .form-grid textarea{
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:10px;padding:11px 14px;color:var(--text);font-size:14px;outline:none;
+}
+.form-grid input:focus, .form-grid select:focus, .form-grid textarea:focus{border-color:var(--accent)}
+.form-grid textarea{resize:vertical;min-height:60px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-actions{display:flex;gap:8px;margin-top:18px}
+.form-actions button{flex:1;padding:12px;border-radius:10px;font-family:var(--mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;transition:transform .1s}
+.form-actions button:active{transform:scale(.97)}
+.form-actions .primary{background:var(--accent);color:#fff}
+.form-actions .secondary{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border)}
+.form-actions .danger{background:rgba(239,68,68,.1);color:var(--danger);border:1px solid rgba(239,68,68,.25)}
+
+.override-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:14px}
+.override-row button{padding:10px 4px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:4px}
+.override-row button[data-s="online"]{color:var(--online)}
+.override-row button[data-s="comida"]{color:var(--comida)}
+.override-row button[data-s="bano"]{color:var(--bano)}
+.override-row button[data-s="break"]{color:var(--brk)}
+.override-row button[data-s="offline"]{color:var(--offline)}
+.override-row .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+/* ═════════ CAMPAIGN PICKER LIST ═════════ */
+.campaign-pick-list{display:flex;flex-direction:column;gap:8px;margin-top:14px;max-height:50vh;overflow-y:auto}
+.campaign-pick{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;
+  background:rgba(255,255,255,.025);border:1px solid var(--border);transition:all .12s;cursor:pointer;text-align:left;width:100%
+}
+.campaign-pick:active{transform:scale(.98)}
+.campaign-pick.selected{border-color:var(--accent);background:var(--accent-soft)}
+.campaign-pick .cp-letter{
+  width:36px;height:36px;border-radius:10px;background:var(--accent);color:#fff;
+  display:grid;place-items:center;font-weight:700;font-family:var(--mono);font-size:14px;flex-shrink:0;
+}
+.campaign-pick .cp-main{flex:1;min-width:0}
+.campaign-pick .cp-name{font-size:14px;font-weight:500}
+.campaign-pick .cp-desc{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px}
+.campaign-pick .cp-check{color:var(--accent);font-size:18px}
+
+/* ═════════ UTIL ═════════ */
+.hidden{display:none !important}
+.empty{color:var(--muted);font-size:13px;font-style:italic;text-align:center;padding:40px 20px}
+.toast{position:fixed;bottom:calc(90px + var(--safe-bottom));left:50%;transform:translateX(-50%);background:#1a1a1c;border:1px solid var(--border-strong);border-radius:12px;padding:10px 18px;font-size:13px;z-index:200;animation:slideUp .25s ease}
+@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ═════════ DESKTOP ═════════ */
+@media (min-width:900px){
+  .app{padding:0 0 40px;max-width:1280px;margin:0 auto}
+  .tab-content{padding:24px 32px}
+  .topbar{padding:18px 32px}
+  .topbar .title{font-size:28px}
+  .bottom-nav{position:sticky;top:60px;left:auto;right:auto;bottom:auto;max-width:1280px;margin:0 auto;grid-template-columns:repeat(4,auto);justify-content:start;gap:6px;padding:14px 32px;background:transparent;backdrop-filter:none;border-top:none;border-bottom:1px solid var(--border)}
+  .bottom-nav.sup{grid-template-columns:repeat(5,auto)}
+  .bottom-nav button{flex-direction:row;padding:10px 16px;border-radius:10px;gap:8px;font-size:11px}
+  .bottom-nav button.active{background:var(--accent-soft)}
+  .chat-wrap{height:calc(100vh - 220px)}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGO N reutilizable como template -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="neostat-n" viewBox="0 0 308 294">
+    <polygon points="14,0 82,0 56,294 0,294" class="l-pillar"/>
+    <polygon points="82,0 152,0 294,294 232,294" class="l-diag"/>
+    <polygon points="240,0 308,0 296,294 240,294" class="l-pillar"/>
+  </symbol>
+</svg>
+
+<!-- ═════════ LOGIN ═════════ -->
+<div id="login" class="login">
+  <div class="login-card">
+    <div class="brand-row">
+      <svg class="logo-n"><use href="#neostat-n"/></svg>
+      <div class="brand-text">neostat</div>
+    </div>
+    <h1>Centro de <em>control</em></h1>
+    <p>Inicia sesión con tu cuenta de Google corporativa para acceder a tu panel.</p>
+    <div id="googleBtn"></div>
+    <div id="loginErr" class="err"></div>
+  </div>
+</div>
+
+<!-- ═════════ APP ═════════ -->
+<div id="app" class="app hidden">
+
+  <header class="topbar">
+    <div class="title-block">
+      <svg class="logo-n"><use href="#neostat-n"/></svg>
+      <h1 class="title">Centro de <em>control</em></h1>
+    </div>
+    <button class="profile-btn" onclick="openProfileModal()">
+      <img id="meAvatar" src="" alt="">
+      <span class="pn" id="meName">—</span>
+      <span class="role-tag" id="meRole">—</span>
+    </button>
+  </header>
+
+  <nav class="bottom-nav" id="bottomNav">
+    <button data-tab="home" class="active" onclick="switchTab('home')">
+      <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>
+      Inicio
+    </button>
+    <button data-tab="team" onclick="switchTab('team')">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 19c0-3 2.5-5 6-5s6 2 6 5M14 19c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/></svg>
+      Equipo
+    </button>
+    <button data-tab="chat" onclick="switchTab('chat')">
+      <svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-12.4 6.7L4 20l1.3-4.6A8 8 0 1121 12z"/></svg>
+      Chat
+    </button>
+    <button data-tab="metrics" onclick="switchTab('metrics')">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+      Métricas
+    </button>
+    <button data-tab="admin" onclick="switchTab('admin')" id="adminTabBtn" class="hidden">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4 12H1M23 12h-3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>
+      Admin
+    </button>
+  </nav>
+
+  <!-- TAB: INICIO -->
+  <section id="tab-home" class="tab-content">
+    <div id="homeAgent">
+      <div class="my-state">
+        <div class="hello" id="agentHello">Hola, —</div>
+        <div class="now-state">
+          ESTADO ACTUAL:
+          <span class="state-pill-big" id="agentPill" data-state="offline"><span class="dot"></span><span id="agentPillTxt">Offline</span></span>
+        </div>
+        <div class="timer-big" id="agentTimer">0:00</div>
+        <div class="state-grid" id="stateGrid"></div>
+        <div class="punch-strip">
+          <div><span class="p-lab">Entrada</span><span class="p-val" id="punchIn">—</span></div>
+          <div><span class="p-lab">Salida</span><span class="p-val" id="punchOut">—</span></div>
+          <div><span class="p-lab">Horas</span><span class="p-val" id="punchTotal">—</span></div>
+          <div><span class="p-lab">% Ocup.</span><span class="p-val" id="punchOcc">—</span></div>
+        </div>
+      </div>
+
+      <h3 class="section-title">Campaña activa</h3>
+      <button class="campaign-selector" onclick="openCampaignPicker()">
+        <div class="ico" id="campIcoLetter">—</div>
+        <div class="info">
+          <div class="lab">Trabajando en</div>
+          <div class="val" id="campActiveName">Toca para seleccionar campaña</div>
+        </div>
+        <div class="chevron">›</div>
+      </button>
+
+      <h3 class="section-title">Registrar actividad</h3>
+      <div class="act-grid">
+        <button class="act-btn" onclick="logAct('llamada')"><span class="ab-text">+ Llamada</span><span class="ab-count" id="cnt-llamada">0</span></button>
+        <button class="act-btn" onclick="logAct('cita')"><span class="ab-text">+ Cita</span><span class="ab-count" id="cnt-cita">0</span></button>
+        <button class="act-btn" onclick="logAct('demo')"><span class="ab-text">+ Demo</span><span class="ab-count" id="cnt-demo">0</span></button>
+        <button class="act-btn" onclick="logAct('cierre')"><span class="ab-text">+ Cierre</span><span class="ab-count" id="cnt-cierre">0</span></button>
+      </div>
+    </div>
+
+    <div id="homeSupervisor" class="hidden">
+      <div class="section-head">
+        <h3 class="section-title">Resumen del equipo</h3>
+        <span class="date-label" id="dateLabel"></span>
+      </div>
+      <div class="summary" id="summaryRow"></div>
+
+      <h3 class="section-title">Acciones rápidas</h3>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px">
+        <button class="act-btn" onclick="switchTab('chat'); setTimeout(()=>quickMeet('all'),200)"><span class="ab-text">📹 Meet grupal</span></button>
+        <button class="act-btn" onclick="switchTab('team')"><span class="ab-text">👥 Ver equipo</span></button>
+        <button class="act-btn" onclick="switchTab('admin'); setAdminSub('agentes')"><span class="ab-text">✎ Editar agentes</span></button>
+        <button class="act-btn" onclick="switchTab('admin'); setAdminSub('campanas')"><span class="ab-text">⚑ Campañas</span></button>
+      </div>
+
+      <h3 class="section-title">Campañas activas</h3>
+      <div id="activeCampaignsList"></div>
+    </div>
+  </section>
+
+  <!-- TAB: EQUIPO -->
+  <section id="tab-team" class="tab-content hidden">
+    <div class="section-head">
+      <h3 class="section-title">Equipo en vivo</h3>
+      <span class="date-label" id="dateLabel2"></span>
+    </div>
+    <div class="summary" id="summaryRow2"></div>
+    <div class="grid-team" id="teamGrid"></div>
+  </section>
+
+  <!-- TAB: CHAT -->
+  <section id="tab-chat" class="tab-content hidden">
+    <div class="chat-wrap">
+      <div class="chat-tabs" id="chatTabs"></div>
+      <div class="chat-list" id="chatList"></div>
+      <div class="chat-input-row">
+        <button class="meet" onclick="createMeetForCurrent()" title="Iniciar Google Meet">
+          <svg viewBox="0 0 24 24"><path d="M15 10l5-3v10l-5-3M4 7h11v10H4z"/></svg>
+        </button>
+        <textarea id="chatInput" placeholder="Escribe un mensaje…" rows="1"></textarea>
+        <button onclick="sendChatMessage()" title="Enviar">
+          <svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4l4 8-4 8z"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB: MÉTRICAS -->
+  <section id="tab-metrics" class="tab-content hidden">
+    <h3 class="section-title">Mis métricas del día</h3>
+    <div id="metricsMe" class="grid-team"></div>
+
+    <div id="metricsSupervisor" class="hidden">
+      <h3 class="section-title" style="margin-top:30px">KPIs del equipo</h3>
+      <div class="grid-team" id="kpiGrid"></div>
+
+      <h3 class="section-title" style="margin-top:30px">Acceso al sheet</h3>
+      <p style="color:var(--muted);font-size:13px;line-height:1.6">
+        Para análisis detallado, tablas dinámicas y exportación abre tu Google Sheet de Neostat.
+        Las hojas <code style="color:var(--accent);font-family:var(--mono)">EventosEstado</code> y <code style="color:var(--accent);font-family:var(--mono)">Actividades</code> tienen el log completo por timestamp, incluyendo la columna <code style="color:var(--accent);font-family:var(--mono)">Campaña</code> para tipificar resultados.
+      </p>
+    </div>
+  </section>
+
+  <!-- TAB: ADMIN (solo supervisor) -->
+  <section id="tab-admin" class="tab-content hidden">
+    <div class="admin-subtabs">
+      <button data-sub="agentes" class="active" onclick="setAdminSub('agentes')">Agentes</button>
+      <button data-sub="campanas" onclick="setAdminSub('campanas')">Campañas</button>
+    </div>
+
+    <div id="admin-agentes">
+      <button class="add-btn" onclick="openAgentForm()">+ Agregar agente</button>
+      <div class="admin-list" id="agentesList"></div>
+    </div>
+
+    <div id="admin-campanas" class="hidden">
+      <button class="add-btn" onclick="openCampaignForm()">+ Nueva campaña</button>
+      <div class="admin-list" id="campanasList"></div>
+    </div>
+  </section>
+</div>
+
+<!-- MODAL -->
+<div id="modalWrap" class="modal-wrap" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBody"></div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  CONFIGURACIÓN — edita estas dos constantes                   ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+const API_URL          = 'https://script.google.com/macros/s/AKfycbziGGkj4ck5eL1g009d6TiwHWBKg6SaRLd2vc-Tlq_t22SRrZWm3kGFb7drlPnw3Kb0/exec';
+const GOOGLE_CLIENT_ID = '750069653065-1486ejbccfo3dkcuu1c7lo1mtbbu2ms4.apps.googleusercontent.com';
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  ESTADO                                                       ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+const STATES = [
+  {id:'online', label:'Online'},
+  {id:'comida', label:'Comida'},
+  {id:'bano',   label:'Baño'},
+  {id:'break',  label:'Break'},
+  {id:'offline',label:'Offline'},
+];
+const ACTIVITIES = ['llamada','cita','demo','cierre'];
+
+let me = null;
+let agents = [];
+let agentsRoster = [];
+let campaigns = [];
+let activeCampaign = null;   // {id, nombre} actualmente seleccionada por este agente
+let messages = [];
+let lastMsgTs = 0;
+let currentTab = 'home';
+let currentChat = 'all';
+let currentAdminSub = 'agentes';
+let pollTimer = null;
+let liveTimer = null;
+
+const isMobile = () => window.innerWidth < 900;
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  GOOGLE LOGIN                                                 ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+window.addEventListener('load', () => {
+  if (!window.google) { setTimeout(initGoogle, 500); return; }
+  initGoogle();
+});
+
+function initGoogle(){
+  try {
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: onLogin,
+      auto_select: true,
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('googleBtn'),
+      { theme:'filled_blue', size:'large', text:'continue_with', shape:'pill', width:280 }
+    );
+    google.accounts.id.prompt();
+  } catch(e) {
+    document.getElementById('loginErr').textContent = 'No se pudo cargar Google. Verifica el Client ID.';
+  }
+}
+
+function onLogin(resp){
+  try {
+    const payload = JSON.parse(atob(resp.credential.split('.')[1]));
+    me = {
+      email: payload.email,
+      name: payload.name || payload.email,
+      picture: payload.picture || '',
+      rol: 'agente'
+    };
+    bootstrap();
+  } catch(e) {
+    document.getElementById('loginErr').textContent = 'Error al procesar login.';
+  }
+}
+
+async function bootstrap(){
+  try {
+    const r = await api('agents');
+    if (!r.ok) throw new Error(r.error);
+    agentsRoster = r.agents;
+    const found = agentsRoster.find(a => a.email.toLowerCase() === me.email.toLowerCase() && a.activo);
+    if (!found) {
+      document.getElementById('loginErr').textContent = `${me.email} no está autorizado. Pide al supervisor agregarte.`;
+      return;
+    }
+    me.rol = found.rol;
+    me.nombre = found.nombre;
+  } catch(e) {
+    document.getElementById('loginErr').textContent = 'No se pudo conectar al backend. Verifica API_URL.';
+    return;
+  }
+
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+
+  document.getElementById('meAvatar').src = me.picture || 'icon.svg';
+  document.getElementById('meName').textContent = me.nombre;
+  const roleEl = document.getElementById('meRole');
+  roleEl.textContent = me.rol === 'supervisor' ? 'Supervisor' : 'Agente';
+  if (me.rol === 'supervisor') roleEl.classList.add('sup');
+
+  if (me.rol === 'supervisor') {
+    document.getElementById('homeAgent').classList.add('hidden');
+    document.getElementById('homeSupervisor').classList.remove('hidden');
+    document.getElementById('metricsSupervisor').classList.remove('hidden');
+    document.getElementById('adminTabBtn').classList.remove('hidden');
+    document.getElementById('bottomNav').classList.add('sup');
+  }
+
+  // Cargar campañas
+  await refreshCampaigns();
+  // Restaurar campaña activa local
+  if (me.rol === 'agente') {
+    const stored = localStorage.getItem('neostat_active_campaign_'+me.email);
+    if (stored) {
+      try {
+        const c = JSON.parse(stored);
+        const exists = campaigns.find(cc => cc.id === c.id && cc.activa);
+        activeCampaign = exists || null;
+      } catch{}
+    }
+    renderActiveCampaign();
+  }
+
+  const d = new Date();
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const dateStr = `${dias[d.getDay()]} ${d.getDate()} de ${meses[d.getMonth()]}`;
+  document.getElementById('dateLabel').textContent = dateStr;
+  document.getElementById('dateLabel2').textContent = dateStr;
+  document.getElementById('agentHello').textContent = `Hola, ${me.nombre.split(' ')[0]}.`;
+
+  renderStateGrid();
+  setupChatInputAutoresize();
+
+  await refresh();
+  startPolling();
+}
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  API CLIENT                                                   ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+async function api(action, params) {
+  const url = new URL(API_URL);
+  url.searchParams.set('action', action);
+  if (params) Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
+  const resp = await fetch(url.toString(), { method:'GET', redirect:'follow' });
+  return await resp.json();
+}
+
+async function apiPost(action, body) {
+  const resp = await fetch(API_URL, {
+    method:'POST',
+    redirect:'follow',
+    body: JSON.stringify({ action, ...body }),
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+  });
+  return await resp.json();
+}
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  POLLING                                                      ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  if (liveTimer) clearInterval(liveTimer);
+  pollTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') refresh();
+  }, 7000);
+  liveTimer = setInterval(() => {
+    if (document.visibilityState === 'visible') renderTimers();
+  }, 1000);
+}
+
+async function refresh() {
+  try {
+    const [s, m] = await Promise.all([
+      api('status'),
+      api('messages', { since: lastMsgTs })
+    ]);
+    if (s.ok) { agents = s.agents; renderAll(); }
+    if (m.ok && m.messages.length) {
+      messages = messages.concat(m.messages);
+      if (messages.length > 200) messages = messages.slice(-200);
+      lastMsgTs = messages[messages.length-1].ts;
+      renderChat();
+    }
+    if (me.rol === 'agente') apiPost('heartbeat', { email: me.email });
+  } catch(e) { console.warn('refresh fail', e); }
+}
+
+async function refreshCampaigns() {
+  try {
+    const r = await api('campaigns');
+    if (r.ok) campaigns = r.campaigns;
+  } catch(e){ console.warn('campaigns fail',e) }
+}
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  RENDERING                                                    ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+function meAgent() {
+  return agents.find(a => a.email.toLowerCase() === me.email.toLowerCase()) || null;
+}
+function fmtMs(ms){
+  if (ms === null || ms === undefined || isNaN(ms) || ms < 0) ms = 0;
+  const s = Math.floor(ms/1000);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
+  if (h>0) return h+':'+String(m).padStart(2,'0')+':'+String(ss).padStart(2,'0');
+  return m+':'+String(ss).padStart(2,'0');
+}
+function fmtHours(ms){ const s=Math.floor(ms/1000);const h=Math.floor(s/3600);const m=Math.floor((s%3600)/60);return h+'h '+String(m).padStart(2,'0')+'m' }
+function fmtClock(ts){ if(!ts) return '—'; const d=new Date(ts); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0') }
+function fmtDate(ts){ if(!ts) return '—'; const d=new Date(ts); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear() }
+function stateLabel(s){ return s==='bano'?'Baño':(s.charAt(0).toUpperCase()+s.slice(1)) }
+function esc(s){ return (s+'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]) }
+
+function renderAll(){
+  renderSummary();
+  renderTeam();
+  if (me.rol === 'agente') renderAgentPanel();
+  if (me.rol === 'supervisor') renderActiveCampaignsSummary();
+  renderMetrics();
+  if (me.rol === 'supervisor' && currentTab === 'admin') renderAdmin();
+}
+
+function renderSummary() {
+  const counts = {online:0, comida:0, bano:0, break:0, offline:0};
+  agents.forEach(a => { counts[a.estado] = (counts[a.estado]||0)+1 });
+  const total = agents.length;
+  const html = STATES.map(s => `
+    <div class="sum-cell">
+      <div class="sum-label"><span class="sum-dot" style="background:var(--${s.id==='break'?'brk':s.id})"></span>${stateLabel(s.id).toUpperCase()}</div>
+      <div class="sum-value">${counts[s.id]}<span class="of">/${total}</span></div>
+    </div>
+  `).join('');
+  document.getElementById('summaryRow').innerHTML = html;
+  document.getElementById('summaryRow2').innerHTML = html;
+}
+
+function renderTeam() {
+  const grid = document.getElementById('teamGrid');
+  grid.innerHTML = agents.map(a => {
+    const liveMs = { ...a.tiempos };
+    liveMs[a.estado] += Math.max(0, Date.now()-a.desde);
+    const since = fmtMs(Date.now()-a.desde);
+    return `
+      <div class="team-card ${a.estado==='online'?'is-online':''}" data-email="${esc(a.email)}">
+        <div class="tc-head">
+          <div class="tc-name">${esc(a.nombre)}</div>
+          <span class="tc-pill" data-state="${a.estado}"><span class="dot"></span>${stateLabel(a.estado).toUpperCase()}</span>
+        </div>
+        <div class="tc-status">
+          <span class="lab">${a.estado==='offline'?'DESC. HACE':'CONECT. HACE'}</span>
+          <span class="val">${since}</span>
+        </div>
+        <div class="tc-bd">
+          <div class="bd"><div class="bd-d" style="background:var(--online)"></div><div class="bd-v">${fmtMs(liveMs.online)}</div><div class="bd-l">On</div></div>
+          <div class="bd"><div class="bd-d" style="background:var(--comida)"></div><div class="bd-v">${fmtMs(liveMs.comida)}</div><div class="bd-l">Com</div></div>
+          <div class="bd"><div class="bd-d" style="background:var(--bano)"></div><div class="bd-v">${fmtMs(liveMs.bano)}</div><div class="bd-l">Bñ</div></div>
+          <div class="bd"><div class="bd-d" style="background:var(--brk)"></div><div class="bd-v">${fmtMs(liveMs.break)}</div><div class="bd-l">Brk</div></div>
+          <div class="bd"><div class="bd-d" style="background:var(--offline)"></div><div class="bd-v">${fmtMs(liveMs.offline)}</div><div class="bd-l">Off</div></div>
+        </div>
+        <div class="tc-acts">
+          <span>📞 <strong>${a.actividades.llamada}</strong></span>
+          <span>📅 <strong>${a.actividades.cita}</strong></span>
+          <span>🎥 <strong>${a.actividades.demo}</strong></span>
+          <span>✓ <strong>${a.actividades.cierre}</strong></span>
+        </div>
+        ${me.rol === 'supervisor' ? `
+          <div class="tc-actions">
+            <button onclick="openChatWith('${esc(a.email)}')">Mensaje</button>
+            <button class="primary" onclick="quickMeet('${esc(a.email)}')">📹 Meet</button>
+            <button onclick="openDetailModal('${esc(a.email)}')">Detalle</button>
+          </div>
+        ` : `
+          <div class="tc-actions">
+            <button onclick="openChatWith('${esc(a.email)}')">Mensaje directo</button>
+          </div>
+        `}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderTimers() {
+  document.querySelectorAll('.team-card').forEach(card => {
+    const email = card.dataset.email;
+    const a = agents.find(x => x.email === email);
+    if (!a) return;
+    const since = fmtMs(Date.now()-a.desde);
+    const v = card.querySelector('.tc-status .val');
+    if (v) v.textContent = since;
+    const liveMs = { ...a.tiempos };
+    liveMs[a.estado] += Math.max(0, Date.now()-a.desde);
+    const bds = card.querySelectorAll('.tc-bd .bd-v');
+    if (bds.length === 5) {
+      bds[0].textContent = fmtMs(liveMs.online);
+      bds[1].textContent = fmtMs(liveMs.comida);
+      bds[2].textContent = fmtMs(liveMs.bano);
+      bds[3].textContent = fmtMs(liveMs.break);
+      bds[4].textContent = fmtMs(liveMs.offline);
+    }
+  });
+  if (me && me.rol === 'agente') {
+    const a = meAgent();
+    if (a) {
+      document.getElementById('agentTimer').textContent = fmtMs(Date.now()-a.desde);
+      const liveMs = { ...a.tiempos };
+      liveMs[a.estado] += Math.max(0, Date.now()-a.desde);
+      const work = liveMs.online + liveMs.comida + liveMs.bano + liveMs.break;
+      const occ = work>0 ? Math.round(liveMs.online/work*100) : 0;
+      document.getElementById('punchTotal').textContent = fmtHours(work);
+      document.getElementById('punchOcc').textContent = occ + '%';
+    }
+  }
+}
+
+function renderStateGrid() {
+  const grid = document.getElementById('stateGrid');
+  grid.innerHTML = STATES.map(s => `
+    <button class="state-btn" data-state="${s.id}" onclick="changeMyState('${s.id}')">
+      <span class="sb-dot"></span>
+      <span class="sb-label">${s.label}</span>
+      <span class="sb-time" data-st="${s.id}">0:00</span>
+    </button>
+  `).join('');
+}
+
+function renderAgentPanel() {
+  const a = meAgent();
+  if (!a) return;
+  const pill = document.getElementById('agentPill');
+  pill.dataset.state = a.estado;
+  document.getElementById('agentPillTxt').textContent = stateLabel(a.estado);
+  document.querySelectorAll('.state-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.state === a.estado);
+    const lbl = b.querySelector('[data-st]');
+    if (lbl) {
+      const t = a.tiempos[b.dataset.state] || 0;
+      const live = b.dataset.state === a.estado ? Math.max(0, Date.now()-a.desde) : 0;
+      lbl.textContent = fmtMs(t + live);
+    }
+  });
+  ACTIVITIES.forEach(act => {
+    const el = document.getElementById('cnt-'+act);
+    if (el) el.textContent = a.actividades[act] || 0;
+  });
+  document.getElementById('punchIn').textContent  = fmtClock(a.entrada);
+  document.getElementById('punchOut').textContent = fmtClock(a.salida);
+}
+
+function renderActiveCampaign() {
+  const icoEl = document.getElementById('campIcoLetter');
+  const valEl = document.getElementById('campActiveName');
+  if (activeCampaign) {
+    icoEl.textContent = activeCampaign.nombre.charAt(0).toUpperCase();
+    valEl.textContent = activeCampaign.nombre;
+    valEl.classList.remove('none');
+  } else {
+    icoEl.textContent = '—';
+    valEl.textContent = 'Toca para seleccionar campaña';
+    valEl.classList.add('none');
+  }
+}
+
+function renderActiveCampaignsSummary() {
+  const cont = document.getElementById('activeCampaignsList');
+  if (!cont) return;
+  const active = campaigns.filter(c => c.activa);
+  if (active.length === 0) {
+    cont.innerHTML = `<div class="empty">No hay campañas activas. <button onclick="openCampaignForm()" style="color:var(--accent);text-decoration:underline">Crear una</button></div>`;
+    return;
+  }
+  cont.innerHTML = active.map(c => `
+    <div class="admin-row" style="margin-bottom:8px">
+      <div class="cp-letter" style="width:36px;height:36px;border-radius:10px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:700;font-family:var(--mono);font-size:14px">${esc(c.nombre.charAt(0).toUpperCase())}</div>
+      <div class="ar-main">
+        <div class="ar-name" style="font-size:16px">${esc(c.nombre)}</div>
+        <div class="ar-sub">${c.descripcion ? esc(c.descripcion) : 'Sin descripción'}</div>
+      </div>
+      <span class="ar-tag active">Activa</span>
+    </div>
+  `).join('');
+}
+
+function renderMetrics() {
+  const a = meAgent();
+  const container = document.getElementById('metricsMe');
+  if (a) {
+    const liveMs = { ...a.tiempos };
+    liveMs[a.estado] += Math.max(0, Date.now()-a.desde);
+    const work = liveMs.online + liveMs.comida + liveMs.bano + liveMs.break;
+    const occ = work>0 ? Math.round(liveMs.online/work*100) : 0;
+    const conv1 = a.actividades.llamada>0 ? Math.round(a.actividades.cita/a.actividades.llamada*100) : 0;
+    const conv2 = a.actividades.demo>0 ? Math.round(a.actividades.cierre/a.actividades.demo*100) : 0;
+    container.innerHTML = `
+      <div class="team-card">
+        <div class="tc-head"><div class="tc-name">Hoy</div></div>
+        <div class="tc-bd">
+          <div class="bd"><div class="bd-v">${fmtHours(liveMs.online)}</div><div class="bd-l">Online</div></div>
+          <div class="bd"><div class="bd-v">${occ}%</div><div class="bd-l">Ocup.</div></div>
+          <div class="bd"><div class="bd-v">${a.actividades.llamada}</div><div class="bd-l">Llam</div></div>
+          <div class="bd"><div class="bd-v">${conv1}%</div><div class="bd-l">L→C</div></div>
+          <div class="bd"><div class="bd-v">${conv2}%</div><div class="bd-l">D→Cz</div></div>
+        </div>
+      </div>
+    `;
+  } else if (me.rol === 'agente') {
+    container.innerHTML = `<div class="empty">Aún no registras actividad hoy.</div>`;
+  } else {
+    container.innerHTML = '';
+  }
+  if (me.rol === 'supervisor') {
+    const grid = document.getElementById('kpiGrid');
+    grid.innerHTML = agents.map(a => {
+      const liveMs = { ...a.tiempos };
+      liveMs[a.estado] += Math.max(0, Date.now()-a.desde);
+      const work = liveMs.online + liveMs.comida + liveMs.bano + liveMs.break;
+      const occ = work>0 ? Math.round(liveMs.online/work*100) : 0;
+      const conv1 = a.actividades.llamada>0 ? Math.round(a.actividades.cita/a.actividades.llamada*100) : 0;
+      return `
+        <div class="team-card">
+          <div class="tc-head"><div class="tc-name">${esc(a.nombre)}</div>
+            <span class="tc-pill" data-state="${a.estado}"><span class="dot"></span>${stateLabel(a.estado).toUpperCase()}</span>
+          </div>
+          <div class="tc-bd">
+            <div class="bd"><div class="bd-v">${fmtHours(liveMs.online)}</div><div class="bd-l">Online</div></div>
+            <div class="bd"><div class="bd-v">${occ}%</div><div class="bd-l">Ocup.</div></div>
+            <div class="bd"><div class="bd-v">${a.actividades.llamada}</div><div class="bd-l">Llam</div></div>
+            <div class="bd"><div class="bd-v">${a.actividades.cita}</div><div class="bd-l">Citas</div></div>
+            <div class="bd"><div class="bd-v">${conv1}%</div><div class="bd-l">L→C</div></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  ESTADO Y ACTIVIDAD                                           ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+async function changeMyState(newState) {
+  const a = meAgent();
+  if (a) { a.estado = newState; a.desde = Date.now(); renderAgentPanel() }
+  const r = await apiPost('changeState', { email: me.email, newState });
+  if (!r.ok) toast('Error: '+r.error);
+  refresh();
+}
+
+async function logAct(type) {
+  const a = meAgent();
+  if (a) { a.actividades[type] = (a.actividades[type]||0)+1; renderAgentPanel(); renderMetrics() }
+  const r = await apiPost('logActivity', {
+    email: me.email,
+    type,
+    campaign: activeCampaign ? activeCampaign.nombre : ''
+  });
+  if (!r.ok) toast('Error: '+r.error);
+  else toast('+1 ' + type + (activeCampaign?' · '+activeCampaign.nombre:''));
+}
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  CAMPAIGN PICKER (AGENTE)                                     ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+function openCampaignPicker() {
+  const active = campaigns.filter(c => c.activa);
+  let body = `
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2>Seleccionar <em>campaña</em></h2>
+    <p style="color:var(--muted);font-size:13px;margin:4px 0 10px">
+      Tus actividades se asociarán a la campaña seleccionada para análisis en el sheet.
+    </p>
+    <div class="campaign-pick-list">
+      <button class="campaign-pick ${!activeCampaign?'selected':''}" onclick="selectCampaign(null)">
+        <div class="cp-letter" style="background:var(--muted)">∅</div>
+        <div class="cp-main"><div class="cp-name">Sin campaña</div><div class="cp-desc">No asociar a ninguna campaña</div></div>
+        ${!activeCampaign?'<div class="cp-check">✓</div>':''}
+      </button>
+  `;
+  if (active.length === 0) {
+    body += `<div class="empty">No hay campañas activas todavía.</div>`;
+  } else {
+    body += active.map(c => `
+      <button class="campaign-pick ${activeCampaign && activeCampaign.id===c.id?'selected':''}" onclick='selectCampaign(${JSON.stringify(c).replace(/'/g,"&#39;")})'>
+        <div class="cp-letter">${esc(c.nombre.charAt(0).toUpperCase())}</div>
+        <div class="cp-main">
+          <div class="cp-name">${esc(c.nombre)}</div>
+          <div class="cp-desc">${c.descripcion ? esc(c.descripcion) : (c.fechaFin ? 'Cierra '+fmtDate(c.fechaFin) : 'Activa')}</div>
+        </div>
+        ${activeCampaign && activeCampaign.id===c.id?'<div class="cp-check">✓</div>':''}
+      </button>
+    `).join('');
+  }
+  body += `</div>`;
+  document.getElementById('modalBody').innerHTML = body;
+  document.getElementById('modalWrap').classList.add('open');
+}
+function selectCampaign(c) {
+  activeCampaign = c;
+  if (c) localStorage.setItem('neostat_active_campaign_'+me.email, JSON.stringify(c));
+  else localStorage.removeItem('neostat_active_campaign_'+me.email);
+  renderActiveCampaign();
+  closeModal();
+  toast(c ? 'Campaña activa: '+c.nombre : 'Sin campaña');
+}
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  CHAT                                                         ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+function rebuildChatTabs() {
+  const tabs = document.getElementById('chatTabs');
+  let html = `<button class="chat-tab ${currentChat==='all'?'active':''}" onclick="setChat('all')">💬 Grupo</button>`;
+  agentsRoster.filter(a => a.activo && a.email.toLowerCase() !== me.email.toLowerCase()).forEach(a => {
+    const ag = agents.find(x => x.email.toLowerCase() === a.email.toLowerCase());
+    const st = ag ? ag.estado : (a.rol==='supervisor' ? 'online' : 'offline');
+    html += `<button class="chat-tab ${currentChat===a.email?'active':''}" data-state="${st}" onclick="setChat('${esc(a.email)}')">
+      <span class="dot"></span>${esc(a.nombre.split(' ')[0])}
+    </button>`;
+  });
+  tabs.innerHTML = html;
+}
+function setChat(target) { currentChat = target; rebuildChatTabs(); renderChat(); }
+function openChatWith(email) { currentChat = email; switchTab('chat'); setTimeout(rebuildChatTabs, 50); }
+
+function renderChat() {
+  rebuildChatTabs();
+  const list = document.getElementById('chatList');
+  const visible = messages.filter(m => {
+    if (currentChat === 'all') return m.to === 'all';
+    const meE = me.email.toLowerCase();
+    const tgE = currentChat.toLowerCase();
+    return (m.from.toLowerCase() === meE && m.to.toLowerCase() === tgE) ||
+           (m.from.toLowerCase() === tgE && m.to.toLowerCase() === meE);
+  });
+  if (visible.length === 0) {
+    list.innerHTML = `<div class="empty">Aún no hay mensajes${currentChat==='all'?' en el grupo':''}. Inicia la conversación.</div>`;
+    return;
+  }
+  list.innerHTML = visible.map(m => {
+    const mine = m.from.toLowerCase() === me.email.toLowerCase();
+    const ag = agentsRoster.find(a => a.email.toLowerCase() === m.from.toLowerCase());
+    const name = ag ? ag.nombre : m.from;
+    const isMeet = !!m.meetLink;
+    return `
+      <div class="msg ${mine?'mine':''} ${isMeet?'meet':''}">
+        ${!mine ? `<div class="msg-from">${esc(name)}</div>` : ''}
+        <div class="msg-meta">${fmtClock(m.ts)} ${m.to !== 'all' && !mine ? '· directo' : ''}</div>
+        <div class="msg-text">${esc(m.text)}</div>
+        ${isMeet ? `<a class="meet-cta" href="${esc(m.meetLink)}" target="_blank" rel="noopener">📹 Unirse a Meet</a>` : ''}
+      </div>
+    `;
+  }).join('');
+  list.scrollTop = list.scrollHeight;
+}
+
+async function sendChatMessage() {
+  const ta = document.getElementById('chatInput');
+  const text = ta.value.trim();
+  if (!text) return;
+  ta.value = ''; ta.style.height = 'auto';
+  const r = await apiPost('sendMessage', { from: me.email, to: currentChat, text });
+  if (!r.ok) toast('Error: '+r.error);
+  else refresh();
+}
+
+async function createMeetForCurrent() {
+  if (!confirm(`¿Crear videollamada con ${currentChat === 'all' ? 'todo el grupo' : currentChat}?`)) return;
+  toast('Creando Meet…');
+  const r = await apiPost('createMeet', { from: me.email, to: currentChat });
+  if (!r.ok) { toast('Error: '+r.error); return }
+  window.open(r.meetLink, '_blank');
+  refresh();
+}
+async function quickMeet(targetEmail) {
+  toast('Creando Meet…');
+  const r = await apiPost('createMeet', { from: me.email, to: targetEmail });
+  if (!r.ok) { toast('Error: '+r.error); return }
+  window.open(r.meetLink, '_blank');
+  refresh();
+}
+
+function setupChatInputAutoresize(){
+  const ta = document.getElementById('chatInput');
+  ta.addEventListener('input', () => {
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(120, ta.scrollHeight) + 'px';
+  });
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey && !isMobile()) {
+      e.preventDefault();
+      sendChatMessage();
+    }
+  });
+}
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  ADMIN: AGENTES & CAMPAÑAS                                    ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+function setAdminSub(sub) {
+  currentAdminSub = sub;
+  document.querySelectorAll('.admin-subtabs button').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
+  document.getElementById('admin-agentes').classList.toggle('hidden', sub !== 'agentes');
+  document.getElementById('admin-campanas').classList.toggle('hidden', sub !== 'campanas');
+  renderAdmin();
+}
+
+async function renderAdmin() {
+  // recarga roster + campañas
+  const [aR, cR] = await Promise.all([api('agents'), api('campaigns')]);
+  if (aR.ok) agentsRoster = aR.agents;
+  if (cR.ok) campaigns = cR.campaigns;
+
+  // AGENTES
+  const ag = document.getElementById('agentesList');
+  ag.innerHTML = agentsRoster.map(a => `
+    <div class="admin-row">
+      <div class="ar-main">
+        <div class="ar-name">${esc(a.nombre)}</div>
+        <div class="ar-sub">${esc(a.email || 'sin email')}${a.telefono?' · '+esc(a.telefono):''}</div>
+      </div>
+      <span class="ar-tag ${a.rol==='supervisor'?'sup':''}">${a.rol.toUpperCase()}</span>
+      <span class="ar-tag ${a.activo?'active':'inactive'}">${a.activo?'ACTIVO':'INACTIVO'}</span>
+      <div class="ar-actions">
+        <button class="primary" onclick='openAgentForm(${JSON.stringify(a).replace(/'/g,"&#39;")})'>Editar</button>
+        ${a.activo
+          ? `<button class="danger" onclick="confirmDisableAgent('${esc(a.email)}','${esc(a.nombre)}')">Desactivar</button>`
+          : `<button onclick="reactivateAgent('${esc(a.email)}')">Reactivar</button>`}
+      </div>
+    </div>
+  `).join('') || '<div class="empty">No hay agentes.</div>';
+
+  // CAMPAÑAS
+  const cm = document.getElementById('campanasList');
+  cm.innerHTML = campaigns.map(c => `
+    <div class="admin-row">
+      <div class="cp-letter" style="width:36px;height:36px;border-radius:10px;background:${c.activa?'var(--accent)':'var(--muted)'};color:#fff;display:grid;place-items:center;font-weight:700;font-family:var(--mono);font-size:14px">${esc(c.nombre.charAt(0).toUpperCase())}</div>
+      <div class="ar-main">
+        <div class="ar-name">${esc(c.nombre)}</div>
+        <div class="ar-sub">${c.descripcion?esc(c.descripcion):''} ${c.fechaInicio?'· '+fmtDate(c.fechaInicio):''}${c.fechaFin?' → '+fmtDate(c.fechaFin):''}</div>
+      </div>
+      <span class="ar-tag ${c.activa?'active':'inactive'}">${c.activa?'ACTIVA':'INACTIVA'}</span>
+      <div class="ar-actions">
+        <button class="primary" onclick='openCampaignForm(${JSON.stringify(c).replace(/'/g,"&#39;")})'>Editar</button>
+
+        ${c.activa
+          ? `<button class="danger" onclick="toggleCampaignActive('${c.id}', false)">Cerrar</button>`
+          : `<button class="primary" onclick="toggleCampaignActive('${c.id}', true)">Activar</button>`}
+      </div>
+    </div>
+  `).join('') || '<div class="empty">No hay campañas. Crea la primera.</div>';
+}
+
+function openAgentForm(existing) {
+  const isEdit = !!existing;
+  document.getElementById('modalBody').innerHTML = `
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2>${isEdit?'Editar':'Agregar'} <em>${isEdit?'agente':'agente nuevo'}</em></h2>
+    <p style="color:var(--muted);font-size:12px;margin:4px 0 6px">${isEdit?'El email no se puede modificar; desactiva y crea uno nuevo si es necesario.':'Llena los datos del nuevo miembro.'}</p>
+    <div class="form-grid">
+      <label><span>Email</span><input id="f-email" type="email" value="${esc(existing?.email || '')}" ${isEdit?'disabled':''} placeholder="ejemplo@neo-stat.com"></label>
+      <label><span>Nombre completo</span><input id="f-nombre" type="text" value="${esc(existing?.nombre || '')}" placeholder="Nombre y apellido"></label>
+      <div class="form-row">
+        <label><span>Rol</span>
+          <select id="f-rol">
+            <option value="agente" ${existing?.rol==='agente'?'selected':''}>Agente</option>
+            <option value="supervisor" ${existing?.rol==='supervisor'?'selected':''}>Supervisor</option>
+          </select>
+        </label>
+        <label><span>Activo</span>
+          <select id="f-activo">
+            <option value="SI" ${existing?.activo!==false?'selected':''}>Sí</option>
+            <option value="NO" ${existing?.activo===false?'selected':''}>No</option>
+          </select>
+        </label>
+      </div>
+      <label><span>Teléfono (opcional)</span><input id="f-tel" type="text" value="${esc(existing?.telefono || '')}" placeholder="+52 55 1234 5678"></label>
+      <label><span>Notas (opcional)</span><textarea id="f-notas" placeholder="Información adicional...">${esc(existing?.notas || '')}</textarea></label>
+    </div>
+    <div class="form-actions">
+      <button class="secondary" onclick="closeModal()">Cancelar</button>
+      <button class="primary" onclick="${isEdit?`saveAgent('${esc(existing.email)}')`:'saveAgent(null)'}">${isEdit?'Guardar':'Agregar'}</button>
+    </div>
+  `;
+  document.getElementById('modalWrap').classList.add('open');
+}
+
+async function saveAgent(existingEmail) {
+  const email   = document.getElementById('f-email').value.trim();
+  const nombre  = document.getElementById('f-nombre').value.trim();
+  const rol     = document.getElementById('f-rol').value;
+  const activo  = document.getElementById('f-activo').value === 'SI';
+  const tel     = document.getElementById('f-tel').value.trim();
+  const notas   = document.getElementById('f-notas').value.trim();
+  if (!nombre || (!existingEmail && !email)) { toast('Email y nombre son obligatorios'); return }
+  let r;
+  if (existingEmail) {
+    r = await apiPost('updateAgent', { supervisor: me.email, targetEmail: existingEmail, nombre, rol, activo, telefono: tel, notas });
+  } else {
+    r = await apiPost('addAgent', { supervisor: me.email, email, nombre, rol, telefono: tel, notas });
+  }
+  if (!r.ok) { toast('Error: '+r.error); return }
+  toast(existingEmail ? 'Agente actualizado' : 'Agente agregado');
+  closeModal();
+  renderAdmin();
+  refresh();
+}
+
+function confirmDisableAgent(email, nombre) {
+  if (!confirm(`¿Desactivar a ${nombre}? Sus datos históricos se conservan.`)) return;
+  apiPost('removeAgent', { supervisor: me.email, targetEmail: email }).then(r => {
+    if (!r.ok) toast('Error: '+r.error);
+    else { toast('Agente desactivado'); renderAdmin(); refresh(); }
+  });
+}
+async function reactivateAgent(email) {
+  const r = await apiPost('updateAgent', { supervisor: me.email, targetEmail: email, activo: true });
+  if (!r.ok) toast('Error: '+r.error);
+  else { toast('Agente reactivado'); renderAdmin(); refresh(); }
+}
+
+function openCampaignForm(existing) {
+  const isEdit = !!existing;
+  const dStart = existing?.fechaInicio ? new Date(existing.fechaInicio).toISOString().split('T')[0] : '';
+  const dEnd   = existing?.fechaFin ? new Date(existing.fechaFin).toISOString().split('T')[0] : '';
+  document.getElementById('modalBody').innerHTML = `
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2>${isEdit?'Editar':'Nueva'} <em>campaña</em></h2>
+    <div class="form-grid">
+      <label><span>Nombre</span><input id="f-cnombre" type="text" value="${esc(existing?.nombre || '')}" placeholder="Ej: Q4 Renovaciones, Cold Outreach Enero..."></label>
+      <label><span>Descripción</span><textarea id="f-cdesc" placeholder="Objetivo y contexto de la campaña">${esc(existing?.descripcion || '')}</textarea></label>
+      <div class="form-row">
+        <label><span>Inicio</span><input id="f-cstart" type="date" value="${dStart}"></label>
+        <label><span>Fin</span><input id="f-cend" type="date" value="${dEnd}"></label>
+      </div>
+      <label><span>Estado</span>
+        <select id="f-cactive">
+          <option value="SI" ${(existing?.activa!==false)?'selected':''}>Activa</option>
+          <option value="NO" ${existing?.activa===false?'selected':''}>Cerrada</option>
+        </select>
+      </label>
+    </div>
+    <div class="form-actions">
+      <button class="secondary" onclick="closeModal()">Cancelar</button>
+      <button class="primary" onclick="${isEdit?`saveCampaign('${esc(existing.id)}')`:'saveCampaign(null)'}">${isEdit?'Guardar':'Crear'}</button>
+    </div>
+  `;
+  document.getElementById('modalWrap').classList.add('open');
+}
+
+async function saveCampaign(existingId) {
+  const nombre = document.getElementById('f-cnombre').value.trim();
+  const desc   = document.getElementById('f-cdesc').value.trim();
+  const start  = document.getElementById('f-cstart').value;
+  const end    = document.getElementById('f-cend').value;
+  const activa = document.getElementById('f-cactive').value === 'SI';
+  if (!nombre) { toast('Nombre obligatorio'); return }
+  let r;
+  if (existingId) {
+    r = await apiPost('updateCampaign', { supervisor: me.email, id: existingId, nombre, descripcion: desc, fechaInicio: start, fechaFin: end, activa });
+  } else {
+    r = await apiPost('addCampaign', { supervisor: me.email, nombre, descripcion: desc, fechaInicio: start, fechaFin: end });
+  }
+  if (!r.ok) { toast('Error: '+r.error); return }
+  toast(existingId ? 'Campaña actualizada' : 'Campaña creada');
+  closeModal();
+  await refreshCampaigns();
+  renderAdmin();
+  renderActiveCampaignsSummary();
+}
+async function toggleCampaignActive(id, active) {
+  const r = await apiPost('updateCampaign', { supervisor: me.email, id, activa: active });
+  if (!r.ok) toast('Error: '+r.error);
+  else { toast(active?'Campaña activada':'Campaña cerrada'); await refreshCampaigns(); renderAdmin(); renderActiveCampaignsSummary(); }
+}
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  TABS                                                         ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  ['home','team','chat','metrics','admin'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('hidden', t !== tab);
+  });
+  if (tab === 'admin') renderAdmin();
+  if (tab === 'chat') rebuildChatTabs();
+}
+
+/* ╔══════════════════════════════════════════════════════════════╗
+   ║  MODAL DETALLE & PERFIL                                       ║
+   ╚══════════════════════════════════════════════════════════════╝ */
+
+function openDetailModal(email){
+  const a = agents.find(x => x.email === email); if (!a) return;
+  const liveMs = { ...a.tiempos };
+  liveMs[a.estado] += Math.max(0, Date.now()-a.desde);
+  const work = liveMs.online + liveMs.comida + liveMs.bano + liveMs.break;
+  const occ = work>0 ? Math.round(liveMs.online/work*100) : 0;
+  document.getElementById('modalBody').innerHTML = `
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2><em>${esc(a.nombre)}</em></h2>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 18px;font-family:var(--mono);letter-spacing:.5px">${esc(a.email)}</p>
+    <span class="state-pill-big" data-state="${a.estado}" style="margin-bottom:10px"><span class="dot"></span>${stateLabel(a.estado)}</span>
+    <p style="color:var(--muted);font-size:12px;margin:10px 0 16px">desde hace ${fmtMs(Date.now()-a.desde)}</p>
+    <div class="tc-bd" style="margin-bottom:18px">
+      <div class="bd"><div class="bd-v">${fmtMs(liveMs.online)}</div><div class="bd-l">Online</div></div>
+      <div class="bd"><div class="bd-v">${fmtMs(liveMs.comida)}</div><div class="bd-l">Comida</div></div>
+      <div class="bd"><div class="bd-v">${fmtMs(liveMs.bano)}</div><div class="bd-l">Baño</div></div>
+      <div class="bd"><div class="bd-v">${fmtMs(liveMs.break)}</div><div class="bd-l">Break</div></div>
+      <div class="bd"><div class="bd-v">${fmtMs(liveMs.offline)}</div><div class="bd-l">Offline</div></div>
+    </div>
+    <div class="punch-strip" style="margin-bottom:18px">
+      <div><span class="p-lab">Entrada</span><span class="p-val">${fmtClock(a.entrada)}</span></div>
+      <div><span class="p-lab">Salida</span><span class="p-val">${fmtClock(a.salida)}</span></div>
+      <div><span class="p-lab">Horas</span><span class="p-val">${fmtHours(work)}</span></div>
+      <div><span class="p-lab">Ocup.</span><span class="p-val">${occ}%</span></div>
+    </div>
+    <div class="tc-bd" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px">
+      <div class="bd"><div class="bd-v">${a.actividades.llamada}</div><div class="bd-l">Llam</div></div>
+      <div class="bd"><div class="bd-v">${a.actividades.cita}</div><div class="bd-l">Citas</div></div>
+      <div class="bd"><div class="bd-v">${a.actividades.demo}</div><div class="bd-l">Demos</div></div>
+      <div class="bd"><div class="bd-v">${a.actividades.cierre}</div><div class="bd-l">Cierres</div></div>
+    </div>
+    ${me.rol === 'supervisor' ? `
+      <h3 class="section-title" style="margin-top:16px">Cambiar estado (override)</h3>
+      <div class="override-row">
+        ${STATES.map(s => `<button data-s="${s.id}" onclick="overrideState('${esc(email)}','${s.id}')"><span class="dot"></span>${s.label}</button>`).join('')}
+      </div>
+      <div class="form-actions">
+        <button class="primary" onclick="closeModal();openChatWith('${esc(email)}')">💬 Chat directo</button>
+        <button class="primary" onclick="closeModal();quickMeet('${esc(email)}')">📹 Iniciar Meet</button>
+      </div>
+    ` : `
+      <div class="form-actions">
+        <button class="primary" onclick="closeModal();openChatWith('${esc(email)}')">💬 Mensaje directo</button>
+      </div>
+    `}
+  `;
+  document.getElementById('modalWrap').classList.add('open');
+}
+
+function openProfileModal(){
+  document.getElementById('modalBody').innerHTML = `
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+      <img src="${me.picture || 'icon.svg'}" style="width:56px;height:56px;border-radius:50%">
+      <div>
+        <h2 style="margin:0"><em>${esc(me.nombre)}</em></h2>
+        <div style="color:var(--muted);font-size:13px;font-family:var(--mono);margin-top:4px">${esc(me.email)}</div>
+        <div style="margin-top:6px"><span class="role-tag ${me.rol==='supervisor'?'sup':''}">${me.rol === 'supervisor' ? 'SUPERVISOR' : 'AGENTE'}</span></div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="danger" onclick="logout()">Cerrar sesión</button>
+    </div>
+  `;
+  document.getElementById('modalWrap').classList.add('open');
+}
+function closeModal(){ document.getElementById('modalWrap').classList.remove('open') }
+
+async function overrideState(targetEmail, newState){
+  const r = await apiPost('overrideState', { supervisor: me.email, targetEmail, newState });
+  if (!r.ok) { toast('Error: '+r.error); return }
+  toast('Estado actualizado');
+  closeModal();
+  refresh();
+}
+
+function logout(){
+  if (pollTimer) clearInterval(pollTimer);
+  if (liveTimer) clearInterval(liveTimer);
+  me = null; agents = []; messages = []; lastMsgTs = 0; activeCampaign = null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login').classList.remove('hidden');
+  closeModal();
+  try { google.accounts.id.disableAutoSelect(); } catch(e){}
+}
+
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.add('hidden'), 2200);
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
