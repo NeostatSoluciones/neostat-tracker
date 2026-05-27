@@ -787,7 +787,21 @@ window.addEventListener('load', () => {
   if (window._oauthUser) {
     me = { email: window._oauthUser.email, name: window._oauthUser.name, picture: window._oauthUser.picture, rol: 'agente' };
     window._oauthUser = null;
-    bootstrap();
+    // Setup sessionStart antes de bootstrap
+    const sessKey2 = 'neostat_sess_' + me.email;
+    const stored2 = localStorage.getItem(sessKey2);
+    if (stored2) {
+      const t2 = parseInt(stored2, 10);
+      if (new Date().toDateString() === new Date(t2).toDateString()) sessionStart = t2;
+    }
+    if (!sessionStart) { sessionStart = Date.now(); localStorage.setItem(sessKey2, sessionStart); }
+    // Debug visible
+    const dbg = document.getElementById('loginErr');
+    if (dbg) { dbg.innerHTML = '⏳ Conectando como ' + me.email + '...'; dbg.style.display='block'; }
+    bootstrap().catch(function(e){
+      const dbg2 = document.getElementById('loginErr');
+      if (dbg2) { dbg2.innerHTML = '❌ Error en bootstrap: ' + e.message; dbg2.style.display='block'; }
+    });
     return;
   }
   // Mostrar boton (ya esta en HTML, pero por si acaso)
