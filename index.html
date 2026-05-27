@@ -156,11 +156,13 @@ input,select,textarea{font-family:inherit;color:inherit;font-size:inherit}
 .bottom-nav button.active{color:var(--accent)}
 .bottom-nav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6}
 .nav-badge{
-  position:absolute;top:2px;right:calc(50% - 14px);
-  background:var(--danger);color:#fff;border-radius:999px;
+  position:absolute;top:0px;right:calc(50% - 18px);
+  background:#ef4444;color:#fff;border-radius:999px;
   font-size:9px;font-family:var(--mono);font-weight:700;
-  padding:1px 5px;line-height:14px;
-  display:none;
+  padding:2px 6px;line-height:14px;
+  display:none;border:2px solid var(--bg);
+  box-shadow:0 0 8px rgba(239,68,68,.6);
+  min-width:18px;text-align:center;
 }
 .nav-badge.show{display:block}
 
@@ -517,7 +519,7 @@ function oauthRedirect(){
 <div id="meetAlert">
   <span class="ma-text" id="meetAlertText">Nueva videollamada disponible</span>
   <a class="ma-join" id="meetAlertLink" href="#" target="_blank" rel="noopener">Unirse →</a>
-  <button class="ma-close" onclick="dismissMeetAlert()">×</button>
+  <button onclick="dismissMeetAlert()" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.3);border:1px solid rgba(255,255,255,.5);color:#fff;font-size:18px;display:grid;place-items:center;flex-shrink:0;cursor:pointer;font-weight:700;line-height:1">×</button>
 </div>
 
 <!-- ═════════ LOGIN ═════════ -->
@@ -695,7 +697,11 @@ function oauthRedirect(){
           <span>Motivo</span>
           <textarea id="perm-motivo" placeholder="Describe brevemente el motivo de la solicitud…" rows="3"></textarea>
         </label>
-        <button class="add-btn" onclick="submitPermiso()">Enviar solicitud</button>
+        <label>
+          <span>Evidencia (PDF opcional)</span>
+          <input type="file" id="perm-file" accept="application/pdf,.pdf" style="background:rgba(255,255,255,.06);border:1px solid var(--border-strong);border-radius:10px;padding:10px 14px;color:var(--text);font-size:14px;cursor:pointer">
+        </label>
+        <button class="add-btn" id="submitPermBtn" onclick="submitPermiso()">Enviar solicitud</button>
       </div>
 
       <h3 class="section-title">Mis solicitudes</h3>
@@ -731,12 +737,12 @@ function oauthRedirect(){
     </div>
 
     <div id="admin-agentes">
-      <button class="add-btn" onclick="openAgentForm()">+ Agregar agente</button>
+      <div id="addAgentBtnWrap"></div>
       <div class="admin-list" id="agentesList"></div>
     </div>
 
     <div id="admin-campanas" class="hidden">
-      <button class="add-btn" onclick="openCampaignForm()">+ Nueva campaña</button>
+      <div id="addCampBtnWrap"></div>
       <div class="admin-list" id="campanasList"></div>
     </div>
 
@@ -932,15 +938,16 @@ async function bootstrap(){
   document.getElementById('meAvatar').src = me.picture || 'icon.svg';
   document.getElementById('meName').textContent = me.nombre;
   const roleEl = document.getElementById('meRole');
-  roleEl.textContent = me.rol === 'supervisor' ? 'Supervisor' : 'Agente';
-  if (me.rol === 'supervisor') roleEl.classList.add('sup');
+  roleEl.textContent = me.rol === 'master' ? '★ Master' : me.rol === 'supervisor' ? 'Supervisor' : 'Agente';
+  if (me.rol === 'supervisor' || me.rol === 'master') roleEl.classList.add('sup');
+  if (me.rol === 'master') roleEl.style.background = 'linear-gradient(135deg,#f59e0b,#ef4444)';
 
-  if (me.rol === 'supervisor') {
+  if (me.rol === 'supervisor' || me.rol === 'master') {
     document.getElementById('homeAgent').classList.add('hidden');
     document.getElementById('homeSupervisor').classList.remove('hidden');
     document.getElementById('metricsSupervisor').classList.remove('hidden');
     document.getElementById('adminTabBtn').classList.remove('hidden');
-    document.getElementById('permisosTabBtn').classList.add('hidden'); // sup usa admin subtab
+    document.getElementById('permisosTabBtn').classList.add('hidden');
     document.getElementById('bottomNav').style.gridTemplateColumns = 'repeat(5,1fr)';
   }
 
@@ -1467,6 +1474,7 @@ function renderPermList(permisos) {
     return;
   }
   const tipoLabel = {vacaciones:'Vacaciones',permiso_medico:'Permiso médico',permiso_personal:'Permiso personal',dia_libre:'Día libre',capacitacion:'Capacitación'};
+  // fileUrl is at index 11 in the sheet
   cont.innerHTML = permisos.map(p => `
     <div class="perm-card">
       <div class="pc-header">
@@ -1476,6 +1484,7 @@ function renderPermList(permisos) {
       <div class="pc-nombre">${esc(p.nombre)}</div>
       <div class="pc-dates">${esc(p.fechaInicio)} → ${esc(p.fechaFin)}</div>
       ${p.motivo ? `<div class="pc-motivo">${esc(p.motivo)}</div>` : ''}
+      ${p.fileUrl ? `<a href="${esc(p.fileUrl)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;color:var(--accent);font-family:var(--mono);font-size:11px;text-decoration:none;border:1px solid rgba(59,130,246,.3);border-radius:6px;padding:4px 10px">📎 Ver evidencia PDF</a>` : ''}
       ${isSup && p.estado === 'pendiente' ? `
         <div class="pc-actions">
           <button class="approve" onclick="handlePerm('approve','${esc(p.id)}')">✓ Aprobar</button>
@@ -1491,17 +1500,39 @@ async function submitPermiso() {
   const inicio  = document.getElementById('perm-inicio').value;
   const fin     = document.getElementById('perm-fin').value;
   const motivo  = document.getElementById('perm-motivo').value.trim();
+  const fileInput = document.getElementById('perm-file');
   if (!inicio || !fin) { toast('Selecciona fechas de inicio y fin'); return; }
   if (fin < inicio) { toast('La fecha fin debe ser mayor o igual al inicio'); return; }
+  const btn = document.getElementById('submitPermBtn');
+  if (btn) { btn.textContent = 'Enviando...'; btn.disabled = true; }
+  let fileUrl = '';
+  // Upload PDF if selected
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    const file = fileInput.files[0];
+    if (file.size > 8 * 1024 * 1024) { toast('El PDF no debe superar 8MB'); if(btn){btn.textContent='Enviar solicitud';btn.disabled=false;} return; }
+    try {
+      const base64data = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = e => res(e.target.result.split(',')[1]);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      const upR = await apiPost('uploadPermissionFile', { email: me.email, filename: file.name, base64data });
+      if (upR.ok) { fileUrl = upR.fileUrl; toast('📎 PDF subido'); }
+      else { toast('⚠️ No se pudo subir el PDF: ' + upR.error); }
+    } catch(e) { toast('Error al leer archivo: ' + e.message); }
+  }
   const r = await apiPost('addPermission', {
     email: me.email, nombre: me.nombre,
-    tipo, fechaInicio: inicio, fechaFin: fin, motivo
+    tipo, fechaInicio: inicio, fechaFin: fin, motivo, fileUrl
   });
+  if (btn) { btn.textContent = 'Enviar solicitud'; btn.disabled = false; }
   if (!r.ok) { toast('Error: ' + r.error); return; }
   toast('Solicitud enviada ✓');
   document.getElementById('perm-inicio').value = '';
   document.getElementById('perm-fin').value = '';
   document.getElementById('perm-motivo').value = '';
+  if (fileInput) fileInput.value = '';
   loadPermisos();
 }
 
@@ -1648,6 +1679,11 @@ async function renderAdmin() {
   const [aR, cR] = await Promise.all([api('agents'), api('campaigns')]);
   if (aR.ok) agentsRoster = aR.agents;
   if (cR.ok) campaigns = cR.campaigns;
+  // Show add buttons only for master
+  const addAgWrap = document.getElementById('addAgentBtnWrap');
+  if (addAgWrap) addAgWrap.innerHTML = me.rol === 'master' ? '<button class="add-btn" onclick="openAgentForm()">+ Agregar agente</button>' : '<p style="color:var(--muted);font-size:12px;font-family:var(--mono);text-align:center;padding:8px">Vista de solo lectura</p>';
+  const addCpWrap = document.getElementById('addCampBtnWrap');
+  if (addCpWrap) addCpWrap.innerHTML = me.rol === 'master' ? '<button class="add-btn" onclick="openCampaignForm()">+ Nueva campaña</button>' : '';
 
   const ag = document.getElementById('agentesList');
   ag.innerHTML = agentsRoster.map(a => `
@@ -1658,12 +1694,13 @@ async function renderAdmin() {
       </div>
       <span class="ar-tag ${a.rol==='supervisor'?'sup':''}">${a.rol.toUpperCase()}</span>
       <span class="ar-tag ${a.activo?'active':'inactive'}">${a.activo?'ACTIVO':'INACTIVO'}</span>
+      ${me.rol === 'master' ? `
       <div class="ar-actions">
         <button class="primary" onclick='openAgentForm(${JSON.stringify(a).replace(/'/g,"&#39;")})'>Editar</button>
         ${a.activo
           ? `<button class="danger" onclick="confirmDisableAgent('${esc(a.email)}','${esc(a.nombre)}')">Desactivar</button>`
           : `<button onclick="reactivateAgent('${esc(a.email)}')">Reactivar</button>`}
-      </div>
+      </div>` : `<span class="ar-tag" style="color:var(--muted);font-size:9px">Solo lectura</span>`}
     </div>
   `).join('') || '<div class="empty">No hay agentes.</div>';
 
@@ -1676,12 +1713,13 @@ async function renderAdmin() {
         <div class="ar-sub">${c.descripcion?esc(c.descripcion):''} ${c.fechaInicio?' · '+fmtDate(c.fechaInicio):''}${c.fechaFin?' → '+fmtDate(c.fechaFin):''}</div>
       </div>
       <span class="ar-tag ${c.activa?'active':'inactive'}">${c.activa?'ACTIVA':'INACTIVA'}</span>
+      ${me.rol === 'master' ? `
       <div class="ar-actions">
         <button class="primary" onclick='openCampaignForm(${JSON.stringify(c).replace(/'/g,"&#39;")})'>Editar</button>
         ${c.activa
           ? `<button class="danger" onclick="toggleCampaignActive('${c.id}', false)">Cerrar</button>`
           : `<button class="primary" onclick="toggleCampaignActive('${c.id}', true)">Activar</button>`}
-      </div>
+      </div>` : `<span class="ar-tag" style="color:var(--muted);font-size:9px">Solo lectura</span>`}
     </div>
   `).join('') || '<div class="empty">No hay campañas. Crea la primera.</div>';
 }
