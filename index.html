@@ -456,6 +456,52 @@ button { -webkit-touch-callout: none; }
   .topbar { padding-top: calc(14px + env(safe-area-inset-top)); }
 }
 </style>
+<script>
+/* LOGIN INDEPENDIENTE — no depende del resto del JS */
+function oauthRedirect() {
+  var clientId = '750069653065-1486ejbccfo3dkcuu1c7lo1mtbbu2ms4.apps.googleusercontent.com';
+  var redirectUri = 'https://neostatsoluciones.github.io/neostat-tracker/';
+  var nonce = Math.random().toString(36).substring(2);
+  var url = 'https://accounts.google.com/o/oauth2/v2/auth'
+    + '?client_id=' + encodeURIComponent(clientId)
+    + '&redirect_uri=' + encodeURIComponent(redirectUri)
+    + '&response_type=id_token'
+    + '&scope=openid%20email%20profile'
+    + '&nonce=' + nonce
+    + '&prompt=select_account';
+  window.location.href = url;
+}
+
+/* Procesar token al volver de Google */
+(function(){
+  var hash = window.location.hash;
+  if (hash && hash.indexOf('id_token=') !== -1) {
+    var parts = hash.slice(1).split('&');
+    var token = null;
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].indexOf('id_token=') === 0) {
+        token = parts[i].slice(9);
+        break;
+      }
+    }
+    if (token) {
+      try {
+        var b64 = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+        // pad base64
+        while (b64.length % 4) b64 += '=';
+        var payload = JSON.parse(atob(b64));
+        window._googlePayload = payload;
+        window.history.replaceState(null, '', window.location.pathname);
+      } catch(e) {
+        document.addEventListener('DOMContentLoaded', function(){
+          var el = document.getElementById('loginErr');
+          if (el) el.textContent = 'Error al leer token: ' + e.message;
+        });
+      }
+    }
+  }
+})();
+</script>
 </head>
 <body>
 
@@ -752,6 +798,15 @@ const isMobile = () => window.innerWidth < 900;
    ╚══════════════════════════════════════════════════════════════╝ */
 
 window.addEventListener('load', () => {
+  // Check if returning from Google OAuth
+  if (window._googlePayload) {
+    var payload = window._googlePayload;
+    me = { email: payload.email, name: payload.name || payload.email, picture: payload.picture || '', rol: 'agente' };
+    window._googlePayload = null;
+    bootstrap();
+    return;
+  }
+  // Legacy hash check
   // Check if returning from OAuth redirect (id_token in hash)
   const hash = window.location.hash;
   if (hash && hash.includes('id_token=')) {
