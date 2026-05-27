@@ -87,6 +87,7 @@ input,select,textarea{font-family:inherit;color:inherit;font-size:inherit}
   width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.25);
   display:grid;place-items:center;color:#fff;font-size:16px;line-height:1;flex-shrink:0;
 }
+@keyframes slideInRight{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes meetPulse{
   0%,100%{box-shadow:0 8px 32px rgba(59,130,246,.4)}
   50%{box-shadow:0 8px 48px rgba(59,130,246,.75)}
@@ -492,6 +493,26 @@ function oauthRedirect(){
 <body>
 
 <!-- ═════════ MEET ALERT ═════════ -->
+<div id="msgNotif" onclick="goToMsgNotif()" style="
+  display:none;position:fixed;top:calc(64px + env(safe-area-inset-top,0px));
+  right:12px;z-index:300;
+  background:rgba(20,20,24,.97);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:16px;padding:12px 14px;
+  max-width:300px;width:calc(100vw - 24px);
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  cursor:pointer;
+  animation:slideInRight .25s ease;
+">
+  <div style="display:flex;align-items:center;gap:10px">
+    <div id="msgNotifAvatar" style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:grid;place-items:center;font-family:var(--serif);font-size:18px;color:#fff;flex-shrink:0"></div>
+    <div style="flex:1;min-width:0">
+      <div id="msgNotifName" style="font-family:var(--serif);font-size:15px;font-weight:500;color:#fff"></div>
+      <div id="msgNotifText" style="font-size:13px;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px"></div>
+    </div>
+    <button onclick="event.stopPropagation();dismissMsgNotif()" style="color:rgba(255,255,255,.4);font-size:20px;padding:4px 8px;flex-shrink:0;background:none;border:none;cursor:pointer">×</button>
+  </div>
+</div>
 <div id="meetAlert">
   <span class="ma-text" id="meetAlertText">Nueva videollamada disponible</span>
   <a class="ma-join" id="meetAlertLink" href="#" target="_blank" rel="noopener">Unirse →</a>
@@ -995,9 +1016,13 @@ async function refresh() {
     if (s.ok) { agents = s.agents; renderAll(); }
     if (m.ok && m.messages.length) {
       const prev = messages.length;
-      messages = messages.concat(m.messages);
-      if (messages.length > 200) messages = messages.slice(-200);
-      lastMsgTs = messages[messages.length-1].ts;
+      // Deduplicar por ts+from para evitar duplicados
+      const existingKeys = new Set(messages.map(x => x.ts + '_' + x.from));
+      const fresh = m.messages.filter(x => !existingKeys.has(x.ts + '_' + x.from));
+      if (fresh.length) {
+        messages = messages.concat(fresh);
+        if (messages.length > 200) messages = messages.slice(-200);
+        lastMsgTs = messages[messages.length-1].ts;
       // Badge: cuenta nuevos mensajes no vistos
       if (currentTab !== 'chat') {
         const newMsgs = messages.length - prev;
@@ -1013,6 +1038,11 @@ async function refresh() {
             const badge = document.getElementById('chatBadge');
             badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
             badge.classList.add('show');
+            // Show floating notification for last new message
+            const lastNew = relNew[relNew.length - 1];
+            if (!lastNew.meetLink) {
+              showMsgNotif(lastNew.from, lastNew.text, lastNew.to === 'all' ? 'all' : lastNew.from);
+            }
           }
         }
         // Check si hay Meet en nuevos mensajes
@@ -1023,6 +1053,7 @@ async function refresh() {
         }
       }
       renderChat();
+      } // end fresh.length
     }
     if (me.rol === 'agente') apiPost('heartbeat', { email: me.email });
   } catch(e) { console.warn('refresh fail', e); }
@@ -1866,6 +1897,40 @@ function toast(msg){
   el.classList.remove('hidden');
   clearTimeout(toast._t);
   toast._t = setTimeout(() => el.classList.add('hidden'), 2200);
+}
+
+
+/* ════ MSG NOTIFICATION ════ */
+var _msgNotifTimer = null;
+var _msgNotifTarget = 'all';
+
+function showMsgNotif(from, text, to) {
+  _msgNotifTarget = to || 'all';
+  var ag = agentsRoster.find(function(a){ return a.email.toLowerCase() === from.toLowerCase(); });
+  var name = ag ? ag.nombre : from;
+  var initial = name.charAt(0).toUpperCase();
+  document.getElementById('msgNotifAvatar').textContent = initial;
+  document.getElementById('msgNotifName').textContent = name;
+  document.getElementById('msgNotifText').textContent = text.length > 60 ? text.slice(0,60)+'…' : text;
+  var el = document.getElementById('msgNotif');
+  el.style.display = 'block';
+  el.style.animation = 'none';
+  setTimeout(function(){ el.style.animation = 'slideInRight .25s ease'; }, 10);
+  clearTimeout(_msgNotifTimer);
+  _msgNotifTimer = setTimeout(dismissMsgNotif, 4000);
+}
+
+function dismissMsgNotif() {
+  document.getElementById('msgNotif').style.display = 'none';
+  clearTimeout(_msgNotifTimer);
+}
+
+function goToMsgNotif() {
+  dismissMsgNotif();
+  var target = _msgNotifTarget === 'all' ? 'all' : _msgNotifTarget;
+  currentChat = target;
+  switchTab('chat');
+  setTimeout(function(){ rebuildChatTabs(); renderChat(); }, 50);
 }
 
 if ('serviceWorker' in navigator) {
