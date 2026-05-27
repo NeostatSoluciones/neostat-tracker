@@ -747,24 +747,73 @@ const isMobile = () => window.innerWidth < 900;
    ╚══════════════════════════════════════════════════════════════╝ */
 
 window.addEventListener('load', () => {
-  if (!window.google) { setTimeout(initGoogle, 500); return; }
-  initGoogle();
+  // Retry logic para cargar Google GSI
+  let attempts = 0;
+  function tryInit() {
+    attempts++;
+    if (window.google && window.google.accounts) {
+      initGoogle();
+    } else if (attempts < 10) {
+      setTimeout(tryInit, 600);
+    } else {
+      document.getElementById('loginErr').textContent = 'No se pudo cargar Google Sign-In. Verifica tu conexión.';
+    }
+  }
+  tryInit();
 });
 
 function initGoogle(){
   try {
+    if (!window.google || !window.google.accounts) {
+      setTimeout(initGoogle, 800);
+      return;
+    }
     google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: onLogin,
-      auto_select: true,
+      auto_select: false,
+      ux_mode: 'popup',
     });
-    google.accounts.id.renderButton(
-      document.getElementById('googleBtn'),
-      { theme:'filled_blue', size:'large', text:'continue_with', shape:'pill', width:280 }
-    );
-    google.accounts.id.prompt();
+    const btnDiv = document.getElementById('googleBtn');
+    btnDiv.innerHTML = '';
+    google.accounts.id.renderButton(btnDiv, {
+      theme: 'filled_blue',
+      size: 'large',
+      text: 'continue_with',
+      shape: 'pill',
+      width: 280,
+      locale: 'es'
+    });
+    // Fallback manual button if GSI button doesn't render in 2s
+    setTimeout(() => {
+      if (btnDiv.children.length === 0 || btnDiv.offsetHeight < 10) {
+        btnDiv.innerHTML = '<button onclick="googleSignInFallback()" style="background:#4285f4;color:#fff;border:none;border-radius:999px;padding:12px 28px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;margin:0 auto"><svg width=20 height=20 viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>Continuar con Google</button>';
+      }
+    }, 2000);
   } catch(e) {
-    document.getElementById('loginErr').textContent = 'No se pudo cargar Google. Verifica el Client ID.';
+    document.getElementById('loginErr').textContent = 'Error: ' + e.message;
+    console.error('GSI Error:', e);
+  }
+}
+
+function googleSignInFallback() {
+  // Manual OAuth popup flow
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: window.location.origin + window.location.pathname,
+    response_type: 'token id_token',
+    scope: 'openid email profile',
+    nonce: Math.random().toString(36),
+  });
+  // Use Google One Tap as popup
+  try {
+    google.accounts.id.prompt(notification => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        document.getElementById('loginErr').textContent = 'Activa ventanas emergentes o usa Chrome. Código: ' + (notification.getNotDisplayedReason() || notification.getSkippedReason());
+      }
+    });
+  } catch(e) {
+    document.getElementById('loginErr').textContent = 'Habilita ventanas emergentes en el navegador e intenta de nuevo.';
   }
 }
 
