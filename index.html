@@ -475,7 +475,12 @@ button { -webkit-touch-callout: none; }
     </div>
     <h1>Centro de <em>control</em></h1>
     <p>Inicia sesión con tu cuenta de Google corporativa para acceder a tu panel.</p>
-    <div id="googleBtn"></div>
+    <div id="googleBtn">
+      <button onclick="oauthRedirect()" style="display:flex;align-items:center;gap:12px;background:#fff;color:#1f1f1f;border:none;border-radius:999px;padding:13px 28px;font-size:15px;font-weight:500;cursor:pointer;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,.4);font-family:sans-serif;">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#4285F4" d="M47.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h13.2c-.6 3-2.3 5.5-4.9 7.2v6h7.9c4.6-4.3 7.3-10.5 7.3-17.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.9-6c-2.1 1.4-4.8 2.3-8 2.3-6.2 0-11.4-4.2-13.3-9.8H2.5v6.2C6.5 42.8 14.7 48 24 48z"/><path fill="#FBBC04" d="M10.7 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7v-6.2H2.5C.9 16.6 0 20.2 0 24s.9 7.4 2.5 10.9l8.2-6.2z"/><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.5l6.8-6.8C35.9 2.4 30.4 0 24 0 14.7 0 6.5 5.2 2.5 13.1l8.2 6.2C12.6 13.7 17.8 9.5 24 9.5z"/></svg>
+        Continuar con Google
+      </button>
+    </div>
     <div id="loginErr" class="err"></div>
   </div>
 </div>
