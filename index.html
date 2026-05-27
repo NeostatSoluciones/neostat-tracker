@@ -587,6 +587,10 @@ function oauthRedirect(){
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4 12H1M23 12h-3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>
       Admin
     </button>
+    <button data-tab="master" onclick="switchTab('master')" id="masterTabBtn" class="hidden">
+      <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Master
+    </button>
   </nav>
 
   <!-- TAB: INICIO -->
@@ -754,6 +758,32 @@ function oauthRedirect(){
     </div>
   </section>
 </div>
+
+  <!-- TAB: MASTER -->
+  <section id="tab-master" class="tab-content hidden">
+    <div class="admin-subtabs" id="masterSubtabs">
+      <button data-sub="magentes" class="active" onclick="setMasterSub('magentes')">Agentes</button>
+      <button data-sub="mcampanas" onclick="setMasterSub('mcampanas')">Campañas</button>
+      <button data-sub="mpermisos" onclick="setMasterSub('mpermisos')">Permisos</button>
+    </div>
+
+    <!-- Master: Agentes -->
+    <div id="master-magentes">
+      <button class="add-btn" onclick="openAgentForm()">+ Agregar agente</button>
+      <div class="admin-list" id="masterAgentesList"></div>
+    </div>
+
+    <!-- Master: Campañas con asignación -->
+    <div id="master-mcampanas" class="hidden">
+      <button class="add-btn" onclick="openCampaignFormMaster()">+ Nueva campaña</button>
+      <div class="admin-list" id="masterCampanasList"></div>
+    </div>
+
+    <!-- Master: Permisos con evidencias -->
+    <div id="master-mpermisos" class="hidden">
+      <div id="masterPermisosList" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+  </section>
 
 <!-- MODAL -->
 <div id="modalWrap" class="modal-wrap" onclick="if(event.target===this)closeModal()">
@@ -927,6 +957,8 @@ async function bootstrap(){
     }
     me.rol = found.rol;
     me.nombre = found.nombre;
+    // Override to master by email regardless of sheet value
+    if (me.email.toLowerCase() === 'neostatsoluciones@gmail.com') me.rol = 'master';
   } catch(e) {
     document.getElementById('loginErr').innerHTML = '❌ No se pudo conectar al backend de Apps Script.<br><small>Verifica que el deployment esté publicado como "Cualquier persona"</small>';
     return;
@@ -949,6 +981,9 @@ async function bootstrap(){
     document.getElementById('adminTabBtn').classList.remove('hidden');
     document.getElementById('permisosTabBtn').classList.add('hidden');
     document.getElementById('bottomNav').style.gridTemplateColumns = 'repeat(5,1fr)';
+    if (me.rol === 'master') {
+      document.getElementById('masterTabBtn').classList.remove('hidden');
+    }
   }
 
   await refreshCampaigns();
@@ -1312,7 +1347,12 @@ function renderActiveCampaign() {
 function renderActiveCampaignsSummary() {
   const cont = document.getElementById('activeCampaignsList');
   if (!cont) return;
-  const active = campaigns.filter(c => c.activa);
+  // Filter campaigns: show only assigned ones (or all if none assigned)
+  const active = campaigns.filter(c => {
+    if (!c.activa) return false;
+    if (!c.agentesAsignados || c.agentesAsignados.length === 0) return true; // open campaign
+    return c.agentesAsignados.some(e => e.toLowerCase() === me.email.toLowerCase());
+  });
   if (active.length === 0) {
     cont.innerHTML = `<div class="empty">No hay campañas activas. <button onclick="openCampaignForm()" style="color:var(--accent);text-decoration:underline">Crear una</button></div>`;
     return;
@@ -1849,11 +1889,12 @@ async function toggleCampaignActive(id, active) {
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  ['home','team','chat','permisos','metrics','admin'].forEach(t => {
+  ['home','team','chat','permisos','metrics','admin','master'].forEach(t => {
     const el = document.getElementById('tab-'+t);
     if (el) el.classList.toggle('hidden', t !== tab);
   });
   if (tab === 'admin') renderAdmin();
+  if (tab === 'master') renderMaster();
   if (tab === 'chat') {
     rebuildChatTabs();
     // Resetear badge
@@ -1964,6 +2005,205 @@ function toast(msg){
   toast._t = setTimeout(() => el.classList.add('hidden'), 2200);
 }
 
+
+
+/* ════ MASTER MODULE ════ */
+let currentMasterSub = 'magentes';
+
+function setMasterSub(sub) {
+  currentMasterSub = sub;
+  document.querySelectorAll('#masterSubtabs button').forEach(b => b.classList.toggle('active', b.dataset.sub === sub));
+  ['magentes','mcampanas','mpermisos'].forEach(s => {
+    document.getElementById('master-'+s).classList.toggle('hidden', s !== sub);
+  });
+  renderMaster();
+}
+
+async function renderMaster() {
+  const [aR, cR] = await Promise.all([api('agents'), api('campaigns')]);
+  if (aR.ok) agentsRoster = aR.agents;
+  if (cR.ok) campaigns = cR.campaigns;
+
+  if (currentMasterSub === 'magentes') {
+    const list = document.getElementById('masterAgentesList');
+    list.innerHTML = agentsRoster.map(a => `
+      <div class="admin-row">
+        <div class="ar-main">
+          <div class="ar-name">${esc(a.nombre)}</div>
+          <div class="ar-sub">${esc(a.email)}${a.telefono?' · '+esc(a.telefono):''}</div>
+          ${a.notas ? `<div class="ar-sub" style="font-style:italic;color:var(--muted-2)">${esc(a.notas)}</div>` : ''}
+        </div>
+        <span class="ar-tag ${a.rol==='master'?'sup':a.rol==='supervisor'?'sup':''}">${a.rol.toUpperCase()}</span>
+        <span class="ar-tag ${a.activo?'active':'inactive'}">${a.activo?'ACTIVO':'INACTIVO'}</span>
+        <div class="ar-actions">
+          <button class="primary" onclick='openAgentForm(${JSON.stringify(a).replace(/'/g,"&#39;")})'>Editar</button>
+          ${a.activo
+            ? `<button class="danger" onclick="confirmDisableAgent('${esc(a.email)}','${esc(a.nombre)}')">Desactivar</button>`
+            : `<button onclick="reactivateAgent('${esc(a.email)}')">Reactivar</button>`}
+        </div>
+      </div>
+    `).join('') || '<div class="empty">No hay agentes.</div>';
+  }
+
+  if (currentMasterSub === 'mcampanas') {
+    const list = document.getElementById('masterCampanasList');
+    list.innerHTML = campaigns.map(camp => {
+      const assigned = camp.agentesAsignados || [];
+      const assignedNames = assigned.map(email => {
+        const ag = agentsRoster.find(a => a.email.toLowerCase() === email.toLowerCase());
+        return ag ? ag.nombre.split(' ')[0] : email;
+      }).join(', ');
+      return `
+        <div class="admin-row" style="flex-direction:column;align-items:stretch;gap:12px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="cp-letter" style="width:36px;height:36px;border-radius:10px;background:${camp.activa?'var(--accent)':'var(--muted)'};color:#fff;display:grid;place-items:center;font-weight:700;font-family:var(--mono);font-size:14px;flex-shrink:0">${esc(camp.nombre.charAt(0))}</div>
+            <div class="ar-main">
+              <div class="ar-name">${esc(camp.nombre)}</div>
+              <div class="ar-sub">${camp.descripcion?esc(camp.descripcion):''}</div>
+            </div>
+            <span class="ar-tag ${camp.activa?'active':'inactive'}">${camp.activa?'ACTIVA':'INACTIVA'}</span>
+            <button class="ar-actions" style="display:flex;gap:6px">
+              <button class="primary" style="padding:7px 12px;border-radius:8px;background:var(--accent-soft);border:1px solid rgba(59,130,246,.3);font-family:var(--mono);font-size:10px;color:var(--accent)" onclick='openCampaignFormMaster(${JSON.stringify(camp).replace(/'/g,"&#39;")})'>Editar</button>
+            </button>
+          </div>
+          <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:12px">
+            <div style="font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Agentes asignados (${assigned.length})</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${assigned.length === 0 ? '<span style="color:var(--muted);font-size:12px;font-style:italic">Todos los agentes (sin restricción)</span>' : ''}
+              ${assigned.map(email => {
+                const ag = agentsRoster.find(a => a.email.toLowerCase() === email.toLowerCase());
+                const name = ag ? ag.nombre.split(' ')[0] : email;
+                return `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid rgba(59,130,246,.3);border-radius:6px;padding:4px 10px;font-family:var(--mono);font-size:11px;color:var(--accent)">
+                  ${esc(name)}
+                  <button onclick="removeAgentFromCamp('${esc(camp.id)}','${esc(email)}')" style="color:rgba(59,130,246,.6);font-size:14px;padding:0;background:none;border:none;cursor:pointer;line-height:1">×</button>
+                </span>`;
+              }).join('')}
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              ${agentsRoster.filter(a => a.activo && !assigned.includes(a.email) && a.rol === 'agente').map(a => `
+                <button onclick="addAgentToCamp('${esc(camp.id)}','${esc(a.email)}')" style="background:rgba(255,255,255,.04);border:1px solid var(--border-strong);border-radius:6px;padding:4px 10px;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer">+ ${esc(a.nombre.split(' ')[0])}</button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('') || '<div class="empty">No hay campañas.</div>';
+  }
+
+  if (currentMasterSub === 'mpermisos') {
+    try {
+      const r = await api('permissions', { email: me.email });
+      if (r.ok) {
+        const list = document.getElementById('masterPermisosList');
+        const tipoLabel = {vacaciones:'Vacaciones',permiso_medico:'Permiso médico',permiso_personal:'Permiso personal',dia_libre:'Día libre',capacitacion:'Capacitación'};
+        if (!r.permisos.length) { list.innerHTML = '<div class="empty">No hay solicitudes.</div>'; return; }
+        list.innerHTML = r.permisos.map(p => `
+          <div class="perm-card">
+            <div class="pc-header">
+              <span class="pc-tipo">${tipoLabel[p.tipo]||p.tipo}</span>
+              <span class="pc-badge ${p.estado}">${p.estado.charAt(0).toUpperCase()+p.estado.slice(1)}</span>
+            </div>
+            <div class="pc-nombre">${esc(p.nombre)}</div>
+            <div class="pc-dates">${esc(p.fechaInicio)} → ${esc(p.fechaFin)}</div>
+            ${p.motivo ? `<div class="pc-motivo">${esc(p.motivo)}</div>` : ''}
+            ${p.fileUrl ? `<a href="${esc(p.fileUrl)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:6px;color:var(--accent);font-family:var(--mono);font-size:11px;text-decoration:none;border:1px solid rgba(59,130,246,.3);border-radius:6px;padding:4px 10px">📎 Ver evidencia PDF</a>` : ''}
+            ${p.estado === 'pendiente' ? `
+              <div class="pc-actions">
+                <button class="approve" onclick="handlePerm('approve','${esc(p.id)}')">✓ Aprobar</button>
+                <button class="deny" onclick="handlePerm('deny','${esc(p.id)}')">✗ Rechazar</button>
+              </div>` : ''}
+          </div>
+        `).join('');
+      }
+    } catch(e) {}
+  }
+}
+
+async function addAgentToCamp(campId, email) {
+  const camp = campaigns.find(c => c.id === campId);
+  if (!camp) return;
+  const current = camp.agentesAsignados || [];
+  if (current.includes(email)) return;
+  const updated = [...current, email];
+  const r = await apiPost('updateCampaign', { supervisor: me.email, id: campId, agentesAsignados: updated });
+  if (!r.ok) { toast('Error: '+r.error); return; }
+  await refreshCampaigns();
+  renderMaster();
+}
+
+async function removeAgentFromCamp(campId, email) {
+  const camp = campaigns.find(c => c.id === campId);
+  if (!camp) return;
+  const updated = (camp.agentesAsignados || []).filter(e => e !== email);
+  const r = await apiPost('updateCampaign', { supervisor: me.email, id: campId, agentesAsignados: updated });
+  if (!r.ok) { toast('Error: '+r.error); return; }
+  await refreshCampaigns();
+  renderMaster();
+}
+
+function openCampaignFormMaster(existing) {
+  const isEdit = !!existing;
+  const dStart = existing?.fechaInicio ? new Date(existing.fechaInicio).toISOString().split('T')[0] : '';
+  const dEnd   = existing?.fechaFin ? new Date(existing.fechaFin).toISOString().split('T')[0] : '';
+  const assigned = existing?.agentesAsignados || [];
+  const agentChecks = agentsRoster.filter(a => a.activo && a.rol === 'agente').map(a => `
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer">
+      <input type="checkbox" value="${esc(a.email)}" ${assigned.includes(a.email)?'checked':''} style="width:16px;height:16px;accent-color:var(--accent)">
+      <span style="font-size:14px">${esc(a.nombre)}</span>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">${esc(a.email)}</span>
+    </label>
+  `).join('');
+  document.getElementById('modalBody').innerHTML = `
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2>${isEdit?'Editar':'Nueva'} <em>campaña</em></h2>
+    <div class="form-grid">
+      <label><span>Nombre</span><input id="f-cnombre" type="text" value="${esc(existing?.nombre||'')}" placeholder="Nombre de la campaña"></label>
+      <label><span>Descripción / Instrucciones</span><textarea id="f-cdesc" rows="3" placeholder="Objetivo, guión, instrucciones para el agente...">${esc(existing?.descripcion||'')}</textarea></label>
+      <div class="form-row">
+        <label><span>Inicio</span><input id="f-cstart" type="date" value="${dStart}"></label>
+        <label><span>Fin</span><input id="f-cend" type="date" value="${dEnd}"></label>
+      </div>
+      <label><span>Estado</span>
+        <select id="f-cactive">
+          <option value="SI" ${(existing?.activa!==false)?'selected':''}>Activa</option>
+          <option value="NO" ${existing?.activa===false?'selected':''}>Cerrada</option>
+        </select>
+      </label>
+      <label><span>Agentes asignados (vacío = todos)</span>
+        <div style="background:rgba(255,255,255,.04);border:1px solid var(--border-strong);border-radius:10px;padding:12px;max-height:200px;overflow-y:auto" id="agentChecklist">
+          ${agentChecks}
+        </div>
+      </label>
+    </div>
+    <div class="form-actions">
+      <button class="secondary" onclick="closeModal()">Cancelar</button>
+      <button class="primary" onclick="${isEdit?`saveCampaignMaster('${esc(existing.id)}')`:'saveCampaignMaster(null)'}">${isEdit?'Guardar':'Crear'}</button>
+    </div>
+  `;
+  document.getElementById('modalWrap').classList.add('open');
+}
+
+async function saveCampaignMaster(existingId) {
+  const nombre = document.getElementById('f-cnombre').value.trim();
+  const desc   = document.getElementById('f-cdesc').value.trim();
+  const start  = document.getElementById('f-cstart').value;
+  const end    = document.getElementById('f-cend').value;
+  const activa = document.getElementById('f-cactive').value === 'SI';
+  if (!nombre) { toast('Nombre obligatorio'); return; }
+  const checkboxes = document.querySelectorAll('#agentChecklist input[type=checkbox]:checked');
+  const agentesAsignados = Array.from(checkboxes).map(cb => cb.value);
+  let r;
+  if (existingId) {
+    r = await apiPost('updateCampaign', { supervisor: me.email, id: existingId, nombre, descripcion: desc, fechaInicio: start, fechaFin: end, activa, agentesAsignados });
+  } else {
+    r = await apiPost('addCampaign', { supervisor: me.email, nombre, descripcion: desc, fechaInicio: start, fechaFin: end, agentesAsignados });
+  }
+  if (!r.ok) { toast('Error: '+r.error); return; }
+  toast(existingId ? 'Campaña actualizada ✓' : 'Campaña creada ✓');
+  closeModal();
+  await refreshCampaigns();
+  renderMaster();
+}
 
 /* ════ MSG NOTIFICATION ════ */
 var _msgNotifTimer = null;
