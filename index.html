@@ -1096,7 +1096,7 @@ function fmtHours(ms){ const s=Math.floor(ms/1000);const h=Math.floor(s/3600);co
 function fmtClock(ts){ if(!ts) return '—'; const d=new Date(ts); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0') }
 function fmtDate(ts){ if(!ts) return '—'; const d=new Date(ts); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/ '+d.getFullYear() }
 function stateLabel(s){ return s==='bano'?'Baño':(s.charAt(0).toUpperCase()+s.slice(1)) }
-function esc(s){ return (s+'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'"'';'})[c]) }
+function esc(s){ var m={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}; return (s+'').replace(/[&<>"']/g,function(ch){return m[ch]||ch}); }
 
 function renderAll(){
   renderSummary();
