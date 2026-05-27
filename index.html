@@ -496,21 +496,22 @@ function oauthRedirect(){
 <div id="msgNotif" onclick="goToMsgNotif()" style="
   display:none;position:fixed;top:calc(64px + env(safe-area-inset-top,0px));
   right:12px;z-index:300;
-  background:rgba(20,20,24,.97);
-  border:1px solid rgba(255,255,255,.18);
-  border-radius:16px;padding:12px 14px;
+  background:linear-gradient(135deg,rgba(22,163,74,.97),rgba(16,185,129,.97));
+  border:1px solid rgba(255,255,255,.30);
+  border-radius:16px;padding:14px 16px;
   max-width:300px;width:calc(100vw - 24px);
-  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  box-shadow:0 8px 32px rgba(22,163,74,.45),0 2px 8px rgba(0,0,0,.4);
   cursor:pointer;
   animation:slideInRight .25s ease;
 ">
-  <div style="display:flex;align-items:center;gap:10px">
-    <div id="msgNotifAvatar" style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:grid;place-items:center;font-family:var(--serif);font-size:18px;color:#fff;flex-shrink:0"></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div id="msgNotifAvatar" style="width:38px;height:38px;border-radius:50%;background:rgba(0,0,0,.25);border:2px solid rgba(255,255,255,.4);display:grid;place-items:center;font-family:var(--serif);font-size:19px;color:#fff;font-weight:600;flex-shrink:0"></div>
     <div style="flex:1;min-width:0">
-      <div id="msgNotifName" style="font-family:var(--serif);font-size:15px;font-weight:500;color:#fff"></div>
-      <div id="msgNotifText" style="font-size:13px;color:rgba(255,255,255,.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px"></div>
+      <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-family:var(--mono);color:rgba(255,255,255,.75);margin-bottom:2px">Mensaje nuevo</div>
+      <div id="msgNotifName" style="font-family:var(--serif);font-size:16px;font-weight:600;color:#fff;line-height:1.1"></div>
+      <div id="msgNotifText" style="font-size:13px;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px"></div>
     </div>
-    <button onclick="event.stopPropagation();dismissMsgNotif()" style="color:rgba(255,255,255,.4);font-size:20px;padding:4px 8px;flex-shrink:0;background:none;border:none;cursor:pointer">×</button>
+    <button onclick="event.stopPropagation();dismissMsgNotif()" style="color:rgba(255,255,255,.6);font-size:22px;padding:4px 8px;flex-shrink:0;background:none;border:none;cursor:pointer;line-height:1">×</button>
   </div>
 </div>
 <div id="meetAlert">
@@ -795,6 +796,7 @@ let pollTimer = null;
 let liveTimer = null;
 let sessionStart = null;      // persistida en localStorage
 let unreadCount = 0;
+let unreadPerUser = {}; // email -> count
 let bathAlertSent = false;    // para no enviar dos veces en el mismo turno de baño
 let meetAlertLink_ = null;
 
@@ -1038,6 +1040,14 @@ async function refresh() {
             const badge = document.getElementById('chatBadge');
             badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
             badge.classList.add('show');
+            // Track per-user unread
+            relNew.forEach(function(msg) {
+              if (!msg.meetLink) {
+                var key = msg.to === 'all' ? 'all' : msg.from;
+                unreadPerUser[key] = (unreadPerUser[key] || 0) + 1;
+              }
+            });
+            rebuildChatTabs();
             // Show floating notification for last new message
             const lastNew = relNew[relNew.length - 1];
             if (!lastNew.meetLink) {
@@ -1513,17 +1523,34 @@ async function handlePerm(action, id) {
 
 function rebuildChatTabs() {
   const tabs = document.getElementById('chatTabs');
-  let html = `<button class="chat-tab ${currentChat==='all'?'active':''}" onclick="setChat('all')">💬 Grupo</button>`;
+  const allUnread = unreadPerUser['all'] || 0;
+  let html = `<button class="chat-tab ${currentChat==='all'?'active':''}" onclick="setChat('all')" style="position:relative">
+    ${allUnread > 0 ? `<span style="position:absolute;top:2px;right:4px;background:#ef4444;color:#fff;border-radius:999px;font-size:9px;font-family:var(--mono);font-weight:700;padding:1px 5px;line-height:14px">${allUnread}</span>` : ''}
+    💬 Grupo
+  </button>`;
   agentsRoster.filter(a => a.activo && a.email.toLowerCase() !== me.email.toLowerCase()).forEach(a => {
     const ag = agents.find(x => x.email.toLowerCase() === a.email.toLowerCase());
     const st = ag ? ag.estado : (a.rol==='supervisor' ? 'online' : 'offline');
-    html += `<button class="chat-tab ${currentChat===a.email?'active':''}" data-state="${st}" onclick="setChat('${esc(a.email)}')">
+    const uCount = unreadPerUser[a.email.toLowerCase()] || unreadPerUser[a.email] || 0;
+    html += `<button class="chat-tab ${currentChat===a.email?'active':''}" data-state="${st}" onclick="setChat('${esc(a.email)}')" style="position:relative">
+      ${uCount > 0 ? `<span style="position:absolute;top:2px;right:4px;background:#ef4444;color:#fff;border-radius:999px;font-size:9px;font-family:var(--mono);font-weight:700;padding:1px 5px;line-height:14px">${uCount}</span>` : ''}
       <span class="dot"></span>${esc(a.nombre.split(' ')[0])}
     </button>`;
   });
   tabs.innerHTML = html;
 }
-function setChat(target) { currentChat = target; rebuildChatTabs(); renderChat(); }
+function setChat(target) {
+  currentChat = target;
+  // Clear unread for this chat
+  var key = target === 'all' ? 'all' : target;
+  if (unreadPerUser[key]) { delete unreadPerUser[key]; }
+  // Recalc total badge
+  unreadCount = Object.values(unreadPerUser).reduce(function(a,b){return a+b;},0);
+  var badge = document.getElementById('chatBadge');
+  if (unreadCount > 0) { badge.textContent = unreadCount > 99 ? '99+' : unreadCount; badge.classList.add('show'); }
+  else badge.classList.remove('show');
+  rebuildChatTabs(); renderChat();
+}
 function openChatWith(email) { currentChat = email; switchTab('chat'); setTimeout(rebuildChatTabs, 50); }
 
 function renderChat() {
@@ -1917,7 +1944,7 @@ function showMsgNotif(from, text, to) {
   el.style.animation = 'none';
   setTimeout(function(){ el.style.animation = 'slideInRight .25s ease'; }, 10);
   clearTimeout(_msgNotifTimer);
-  _msgNotifTimer = setTimeout(dismissMsgNotif, 4000);
+  _msgNotifTimer = setTimeout(dismissMsgNotif, 5000);
 }
 
 function dismissMsgNotif() {
