@@ -51,7 +51,7 @@ input,select,textarea{font-family:inherit;color:inherit;font-size:inherit}
 
 /* ═════════ LOGO ═════════ */
 .logo-img{width:32px;height:32px;object-fit:contain}
-.logo-img-sm{width:22px;height:22px;object-fit:contain}
+.logo-img-sm{width:30px;height:30px;object-fit:contain}
 
 /* ═════════ REFRESH BTN ═════════ */
 .refresh-btn{
@@ -101,10 +101,10 @@ input,select,textarea{font-family:inherit;color:inherit;font-size:inherit}
   border:1px solid var(--border-strong);border-radius:24px;padding:40px 32px;
   backdrop-filter:blur(10px);text-align:center;
 }
-.brand-row{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:6px}
-.brand-row .brand-text{font-family:var(--serif);font-style:italic;font-size:26px;letter-spacing:.5px}
-.login h1{font-family:var(--serif);font-weight:500;font-size:36px;line-height:1.05;margin:18px 0 6px;letter-spacing:-.5px}
-.login h1 em{color:var(--accent);font-style:italic;font-weight:500}
+.brand-logo-wrap{display:flex;justify-content:center;margin-bottom:18px}
+.brand-logo{width:280px;max-width:80%;height:auto;object-fit:contain;filter:drop-shadow(0 8px 28px rgba(59,130,246,.16))}
+.login h1{font-family:var(--serif);font-weight:500;font-size:23px;line-height:1.05;margin:2px 0 6px;letter-spacing:.3px;color:var(--muted)}
+.login h1 em{color:var(--accent);font-style:italic;font-weight:500;opacity:.95}
 .login p{color:var(--muted);margin:0 0 28px;font-size:14px;line-height:1.6}
 #googleBtn{display:flex;justify-content:center;min-height:44px}
 .err{color:#ff6b6b;font-size:14px;margin-top:16px;font-family:var(--mono);letter-spacing:.3px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:10px;padding:12px 16px;line-height:1.5;display:none}.err:not(:empty){display:block}
@@ -120,7 +120,8 @@ input,select,textarea{font-family:inherit;color:inherit;font-size:inherit}
   border-bottom:1px solid var(--border);
 }
 .topbar .title-block{display:flex;align-items:center;gap:12px}
-.topbar .title{font-family:var(--serif);font-weight:500;font-size:22px;line-height:1;letter-spacing:-.3px;margin:0}
+.topbar .title{font-family:var(--sans);font-weight:800;font-size:20px;line-height:1;letter-spacing:1.5px;text-transform:uppercase;margin:0}
+.topbar .title em{font-family:var(--serif);font-weight:500;font-style:italic;font-size:15px;letter-spacing:0;text-transform:none;color:var(--muted);margin-left:6px}
 .topbar .title em{color:var(--accent);font-style:italic}
 .topbar-right{display:flex;align-items:center;gap:8px}
 .profile-btn{
@@ -417,7 +418,8 @@ input,select,textarea{font-family:inherit;color:inherit;font-size:inherit}
   .app{padding:0 0 40px;max-width:1280px;margin:0 auto}
   .tab-content{padding:24px 32px}
   .topbar{padding:18px 32px}
-  .topbar .title{font-size:28px}
+  .topbar .title{font-size:24px;letter-spacing:2px}
+  .topbar .title em{font-size:17px}
   .bottom-nav{position:sticky;top:60px;left:auto;right:auto;bottom:auto;max-width:1280px;margin:0 auto;grid-template-columns:repeat(5,auto);justify-content:start;gap:6px;padding:14px 32px;background:transparent;backdrop-filter:none;border-top:none;border-bottom:1px solid var(--border-strong)}
   .bottom-nav button{flex-direction:row;padding:10px 16px;border-radius:10px;gap:8px;font-size:11px}
   .bottom-nav button.active{background:var(--accent-soft)}
@@ -517,19 +519,18 @@ function oauthRedirect(){
   </div>
 </div>
 <div id="meetAlert">
-  <span class="ma-text" id="meetAlertText">Nueva videollamada disponible</span>
+  <span class="ma-text" id="meetAlertText">Videollamada activa</span>
   <a class="ma-join" id="meetAlertLink" href="#" target="_blank" rel="noopener">Unirse →</a>
-  <button onclick="dismissMeetAlert()" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.3);border:1px solid rgba(255,255,255,.5);color:#fff;font-size:18px;display:grid;place-items:center;flex-shrink:0;cursor:pointer;font-weight:700;line-height:1">×</button>
+  <button onclick="dismissMeetAlert()" title="Finalizar videollamada" aria-label="Finalizar videollamada" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.55);color:#fff;font-size:19px;display:grid;place-items:center;flex-shrink:0;cursor:pointer;font-weight:700;line-height:1">×</button>
 </div>
 
 <!-- ═════════ LOGIN ═════════ -->
 <div id="login" class="login">
   <div class="login-card">
-    <div class="brand-row">
-      <img class="logo-img" src="data:image/png;base64,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" alt="Neostat">
-      <div class="brand-text">neostat</div>
+    <div class="brand-logo-wrap">
+      <img class="brand-logo" src="data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%20458%20138%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20role%3D%22img%22%20aria-label%3D%22Neostat%20Soluciones%22%3E%20%20%3Cdefs%3E%20%20%20%20%3ClinearGradient%20id%3D%22mark%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23f4f6f8%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%239aa1ac%22/%3E%20%20%20%20%3C/linearGradient%3E%20%20%20%20%3ClinearGradient%20id%3D%22diag%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%2360a5fa%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%232563eb%22/%3E%20%20%20%20%3C/linearGradient%3E%20%20%20%20%3ClinearGradient%20id%3D%22bgg%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%20%20%20%20%20%20%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%2316171c%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230a0a0d%22/%3E%20%20%20%20%3C/linearGradient%3E%20%20%3C/defs%3E%20%20%3Cg%20transform%3D%22translate%288%2C7%29%22%3E%20%20%20%20%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%22128%22%20height%3D%22128%22%20rx%3D%2230%22%20fill%3D%22url%28%23bgg%29%22%20stroke%3D%22%232c2f38%22%20stroke-width%3D%221.5%22/%3E%20%20%20%20%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%22126.5%22%20height%3D%22126.5%22%20rx%3D%2229.25%22%20fill%3D%22none%22%20stroke%3D%22%233b82f6%22%20stroke-width%3D%220.6%22%20opacity%3D%220.25%22/%3E%20%20%20%20%3Crect%20x%3D%2236%22%20y%3D%2236%22%20width%3D%2212%22%20height%3D%2256%22%20rx%3D%224%22%20fill%3D%22url%28%23mark%29%22/%3E%20%20%20%20%3Crect%20x%3D%2280%22%20y%3D%2236%22%20width%3D%2212%22%20height%3D%2256%22%20rx%3D%224%22%20fill%3D%22url%28%23mark%29%22/%3E%20%20%20%20%3Cpath%20d%3D%22M44%2038%20L88%2086%20L80%2094%20L36%2046%20Z%22%20fill%3D%22url%28%23diag%29%22/%3E%20%20%3C/g%3E%20%20%3Cg%20transform%3D%22translate%28180%2C70%29%22%20fill%3D%22%23ffffff%22%3E%3Cpath%20transform%3D%22translate%280.00%2C0.00%29%20scale%280.05200%2C-0.05200%29%22%20d%3D%22M690%200H519L233%20433V0H62V702H233L519%20267V702H690Z%22/%3E%3Cpath%20transform%3D%22translate%2840.60%2C0.00%29%20scale%280.05200%2C-0.05200%29%22%20d%3D%22M233%20565V423H462V291H233V137H492V0H62V702H492V565Z%22/%3E%3Cpath%20transform%3D%22translate%2870.24%2C0.00%29%20scale%280.05200%2C-0.05200%29%22%20d%3D%22M33%20353Q33%20456%2081.5%20538.0Q130%20620%20212.5%20666.0Q295%20712%20394%20712Q493%20712%20575.5%20666.0Q658%20620%20705.5%20538.0Q753%20456%20753%20353Q753%20250%20705.0%20167.5Q657%2085%20575.0%2039.0Q493%20-7%20394%20-7Q295%20-7%20212.5%2039.0Q130%2085%2081.5%20167.5Q33%20250%2033%20353ZM579%20353Q579%20446%20528.5%20501.5Q478%20557%20394%20557Q309%20557%20258.5%20502.0Q208%20447%20208%20353Q208%20260%20258.5%20204.5Q309%20149%20394%20149Q478%20149%20528.5%20205.0Q579%20261%20579%20353Z%22/%3E%3Cpath%20transform%3D%22translate%28112.61%2C0.00%29%20scale%280.05200%2C-0.05200%29%22%20d%3D%22M42%20210H224Q228%20171%20251.0%20150.5Q274%20130%20311%20130Q349%20130%20371.0%20147.5Q393%20165%20393%20196Q393%20222%20375.5%20239.0Q358%20256%20332.5%20267.0Q307%20278%20260%20292Q192%20313%20149.0%20334.0Q106%20355%2075.0%20396.0Q44%20437%2044%20503Q44%20601%20115.0%20656.5Q186%20712%20300%20712Q416%20712%20487.0%20656.5Q558%20601%20563%20502H378Q376%20536%20353.0%20555.5Q330%20575%20294%20575Q263%20575%20244.0%20558.5Q225%20542%20225%20511Q225%20477%20257.0%20458.0Q289%20439%20357%20417Q425%20394%20467.5%20373.0Q510%20352%20541.0%20312.0Q572%20272%20572%20209Q572%20149%20541.5%20100.0Q511%2051%20453.0%2022.0Q395%20-7%20316%20-7Q239%20-7%20178.0%2018.0Q117%2043%2080.5%2092.0Q44%20141%2042%20210Z%22/%3E%3Cpath%20transform%3D%22translate%28146.09%2C0.00%29%20scale%280.05200%2C-0.05200%29%22%20d%3D%22M567%20702V565H381V0H210V565H24V702Z%22/%3E%3Cpath%20transform%3D%22translate%28178.32%2C0.00%29%20scale%280.05200%2C-0.05200%29%22%20d%3D%22M499%20124H237L195%200H16L270%20702H468L722%200H541ZM455%20256%20368%20513%20282%20256Z%22/%3E%3Cpath%20transform%3D%22translate%28218.14%2C0.00%29%20scale%280.05200%2C-0.05200%29%22%20d%3D%22M567%20702V565H381V0H210V565H24V702Z%22/%3E%3C/g%3E%3Cg%20transform%3D%22translate%28215.412%2C100%29%22%20fill%3D%22%233b82f6%22%3E%3Cpath%20transform%3D%22translate%280.00%2C0.00%29%20scale%280.01850%2C-0.01850%29%22%20d%3D%22M58%20192H180Q184%20147%20215.5%20118.0Q247%2089%20304%2089Q363%2089%20396.0%20117.5Q429%20146%20429%20191Q429%20226%20408.5%20248.0Q388%20270%20357.5%20282.0Q327%20294%20273%20308Q205%20326%20162.5%20344.5Q120%20363%2090.0%20402.0Q60%20441%2060%20506Q60%20566%2090.0%20611.0Q120%20656%20174.0%20680.0Q228%20704%20299%20704Q400%20704%20464.5%20653.5Q529%20603%20536%20515H410Q407%20553%20374.0%20580.0Q341%20607%20287%20607Q238%20607%20207.0%20582.0Q176%20557%20176%20510Q176%20478%20195.5%20457.5Q215%20437%20245.0%20425.0Q275%20413%20327%20399Q396%20380%20439.5%20361.0Q483%20342%20513.5%20302.5Q544%20263%20544%20197Q544%20144%20515.5%2097.0Q487%2050%20432.5%2021.5Q378%20-7%20304%20-7Q234%20-7%20178.0%2017.5Q122%2042%2090.0%2087.0Q58%20132%2058%20192Z%22/%3E%3Cpath%20transform%3D%22translate%2817.67%2C0.00%29%20scale%280.01850%2C-0.01850%29%22%20d%3D%22M37%20349Q37%20451%2084.5%20532.0Q132%20613%20213.5%20658.5Q295%20704%20392%20704Q490%20704%20571.5%20658.5Q653%20613%20700.0%20532.0Q747%20451%20747%20349Q747%20247%20700.0%20165.5Q653%2084%20571.5%2038.5Q490%20-7%20392%20-7Q295%20-7%20213.5%2038.5Q132%2084%2084.5%20165.5Q37%20247%2037%20349ZM630%20349Q630%20426%20599.5%20484.0Q569%20542%20515.0%20573.0Q461%20604%20392%20604Q323%20604%20269.0%20573.0Q215%20542%20184.5%20484.0Q154%20426%20154%20349Q154%20272%20184.5%20213.5Q215%20155%20269.0%20123.5Q323%2092%20392%2092Q461%2092%20515.0%20123.5Q569%20155%20599.5%20213.5Q630%20272%20630%20349Z%22/%3E%3Cpath%20transform%3D%22translate%2838.68%2C0.00%29%20scale%280.01850%2C-0.01850%29%22%20d%3D%22M189%2092H424V0H75V695H189Z%22/%3E%3Cpath%20transform%3D%22translate%2853.39%2C0.00%29%20scale%280.01850%2C-0.01850%29%22%20d%3D%22M188%20695V252Q188%20173%20229.5%20133.0Q271%2093%20345%2093Q420%2093%20461.5%20133.0Q503%20173%20503%20252V695H617V254Q617%20169%20580.0%20110.0Q543%2051%20481.0%2022.0Q419%20-7%20344%20-7Q269%20-7%20207.5%2022.0Q146%2051%20110.0%20110.0Q74%20169%2074%20254V695Z%22/%3E%3Cpath%20transform%3D%22translate%2872.66%2C0.00%29%20scale%280.01850%2C-0.01850%29%22%20d%3D%22M392%20704Q503%20704%20589.5%20649.5Q676%20595%20715%20495H578Q551%20550%20503.0%20577.0Q455%20604%20392%20604Q323%20604%20269.0%20573.0Q215%20542%20184.5%20484.0Q154%20426%20154%20349Q154%20272%20184.5%20214.0Q215%20156%20269.0%20124.5Q323%2093%20392%2093Q455%2093%20503.0%20120.0Q551%20147%20578%20202H715Q676%20102%20589.5%2048.0Q503%20-6%20392%20-6Q294%20-6%20213.0%2039.5Q132%2085%2084.5%20166.0Q37%20247%2037%20349Q37%20451%2084.5%20532.0Q132%20613%20213.5%20658.5Q295%20704%20392%20704Z%22/%3E%3Cpath%20transform%3D%22translate%2893.46%2C0.00%29%20scale%280.01850%2C-0.01850%29%22%20d%3D%22M189%20695V0H75V695Z%22/%3E%3Cpath%20transform%3D%22translate%28104.84%2C0.00%29%20scale%280.01850%2C-0.01850%29%22%20d%3D%22M37%20349Q37%20451%2084.5%20532.0Q132%20613%20213.5%20658.5Q295%20704%20392%20704Q490%20704%20571.5%20658.5Q653%20613%20700.0%20532.0Q747%20451%20747%20349Q747%20247%20700.0%20165.5Q653%2084%20571.5%2038.5Q490%20-7%20392%20-7Q295%20-7%20213.5%2038.5Q132%2084%2084.5%20165.5Q37%20247%2037%20349ZM630%20349Q630%20426%20599.5%20484.0Q569%20542%20515.0%20573.0Q461%20604%20392%20604Q323%20604%20269.0%20573.0Q215%20542%20184.5%20484.0Q154%20426%20154%20349Q154%20272%20184.5%20213.5Q215%20155%20269.0%20123.5Q323%2092%20392%2092Q461%2092%20515.0%20123.5Q569%20155%20599.5%20213.5Q630%20272%20630%20349Z%22/%3E%3Cpath%20transform%3D%22translate%28125.85%2C0.00%29%20scale%280.01850%2C-0.01850%29%22%20d%3D%22M646%200H532L189%20519V0H75V696H189L532%20178V696H646Z%22/%3E%3Cpath%20transform%3D%22translate%28145.68%2C0.00%29%20scale%280.01850%2C-0.01850%29%22%20d%3D%22M189%20603V399H429V306H189V93H459V0H75V696H459V603Z%22/%3E%3Cpath%20transform%3D%22translate%28161.88%2C0.00%29%20scale%280.01850%2C-0.01850%29%22%20d%3D%22M58%20192H180Q184%20147%20215.5%20118.0Q247%2089%20304%2089Q363%2089%20396.0%20117.5Q429%20146%20429%20191Q429%20226%20408.5%20248.0Q388%20270%20357.5%20282.0Q327%20294%20273%20308Q205%20326%20162.5%20344.5Q120%20363%2090.0%20402.0Q60%20441%2060%20506Q60%20566%2090.0%20611.0Q120%20656%20174.0%20680.0Q228%20704%20299%20704Q400%20704%20464.5%20653.5Q529%20603%20536%20515H410Q407%20553%20374.0%20580.0Q341%20607%20287%20607Q238%20607%20207.0%20582.0Q176%20557%20176%20510Q176%20478%20195.5%20457.5Q215%20437%20245.0%20425.0Q275%20413%20327%20399Q396%20380%20439.5%20361.0Q483%20342%20513.5%20302.5Q544%20263%20544%20197Q544%20144%20515.5%2097.0Q487%2050%20432.5%2021.5Q378%20-7%20304%20-7Q234%20-7%20178.0%2017.5Q122%2042%2090.0%2087.0Q58%20132%2058%20192Z%22/%3E%3C/g%3E%3Cg%20transform%3D%22translate%28436.376%2C30%29%22%3E%20%20%3Ccircle%20cx%3D%228%22%20cy%3D%228%22%20r%3D%227.5%22%20fill%3D%22none%22%20stroke%3D%22%239aa1ac%22%20stroke-width%3D%221.2%22/%3E%20%20%3Ctext%20x%3D%228%22%20y%3D%2211.6%22%20font-family%3D%22Poppins%2C%20Arial%2C%20sans-serif%22%20font-weight%3D%22700%22%20font-size%3D%2210%22%20fill%3D%22%239aa1ac%22%20text-anchor%3D%22middle%22%3ER%3C/text%3E%3C/g%3E%3C/svg%3E" alt="Neostat Soluciones">
     </div>
-    <h1>Centro de <em>control</em></h1>
+    <h1>Centro de <em>Control</em></h1>
     <p>Inicia sesión con tu cuenta de Google corporativa para acceder a tu panel.</p>
     <div id="googleBtn">
       <button onclick="oauthRedirect()" style="display:flex;align-items:center;gap:12px;background:#fff;color:#1f1f1f;border:none;border-radius:999px;padding:13px 28px;font-size:15px;font-weight:500;cursor:pointer;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,.4);font-family:sans-serif;">
@@ -546,8 +547,8 @@ function oauthRedirect(){
 
   <header class="topbar">
     <div class="title-block">
-      <img class="logo-img-sm" src="data:image/png;base64,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" alt="Neostat">
-      <h1 class="title">Centro de <em>control</em></h1>
+      <img class="logo-img-sm" src="data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%20128%20128%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20role%3D%22img%22%20aria-label%3D%22Neostat%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22mark%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23f4f6f8%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%239aa1ac%22/%3E%3C/linearGradient%3E%3ClinearGradient%20id%3D%22diag%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%2360a5fa%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%232563eb%22/%3E%3C/linearGradient%3E%3ClinearGradient%20id%3D%22bgg%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%2316171c%22/%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230a0a0d%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x%3D%222%22%20y%3D%222%22%20width%3D%22124%22%20height%3D%22124%22%20rx%3D%2230%22%20fill%3D%22url%28%23bgg%29%22%20stroke%3D%22%232c2f38%22%20stroke-width%3D%221.5%22/%3E%3Crect%20x%3D%222.75%22%20y%3D%222.75%22%20width%3D%22122.5%22%20height%3D%22122.5%22%20rx%3D%2229.25%22%20fill%3D%22none%22%20stroke%3D%22%233b82f6%22%20stroke-width%3D%220.6%22%20opacity%3D%220.25%22/%3E%3Crect%20x%3D%2234%22%20y%3D%2234%22%20width%3D%2212%22%20height%3D%2256%22%20rx%3D%224%22%20fill%3D%22url%28%23mark%29%22/%3E%3Crect%20x%3D%2278%22%20y%3D%2234%22%20width%3D%2212%22%20height%3D%2256%22%20rx%3D%224%22%20fill%3D%22url%28%23mark%29%22/%3E%3Cpath%20d%3D%22M42%2036%20L86%2084%20L78%2092%20L34%2044%20Z%22%20fill%3D%22url%28%23diag%29%22/%3E%3C/svg%3E" alt="Neostat">
+      <h1 class="title">NEOSTAT<em>Centro de control</em></h1>
     </div>
     <div class="topbar-right">
       <button class="refresh-btn" id="refreshBtn" onclick="softRefresh()" title="Actualizar">
@@ -835,6 +836,7 @@ let unreadCount = 0;
 let unreadPerUser = {}; // email -> count
 let bathAlertSent = false;    // para no enviar dos veces en el mismo turno de baño
 let meetAlertLink_ = null;
+let dismissedMeets = new Set((function(){ try { return JSON.parse(localStorage.getItem('neostat_dismissed_meets')||'[]'); } catch(e){ return []; } })());
 
 const isMobile = () => window.innerWidth < 900;
 
@@ -1044,11 +1046,62 @@ function startPolling() {
   if (pollTimer) clearInterval(pollTimer);
   if (liveTimer) clearInterval(liveTimer);
   pollTimer = setInterval(() => {
-    if (document.visibilityState === 'visible') refresh();
-  }, 7000);
+    if (document.visibilityState !== 'visible') return;
+    // Chat abierto → refresco más ágil de mensajes; resto → ciclo completo cada 7s
+    if (currentTab === 'chat') {
+      refreshMessagesOnly();
+      // Cada 2do tick en chat, refrescar también estados
+      startPolling._n = (startPolling._n||0)+1;
+      if (startPolling._n % 3 === 0) refresh();
+    } else {
+      refresh();
+    }
+  }, 2500);
   liveTimer = setInterval(() => {
     if (document.visibilityState === 'visible') { renderTimers(); checkBathAlert(); }
   }, 1000);
+}
+
+// Refresco ligero solo de mensajes — mantiene el chat dinámico sin recargar todo
+async function refreshMessagesOnly() {
+  try {
+    const m = await api('messages', { since: lastMsgTs });
+    if (!m.ok || !m.messages || !m.messages.length) return;
+    const existingKeys = new Set(messages.map(x => x.ts + '_' + x.from));
+    const fresh = m.messages.filter(x => !existingKeys.has(x.ts + '_' + x.from));
+    if (!fresh.length) return;
+    messages = messages.concat(fresh);
+    if (messages.length > 200) messages = messages.slice(-200);
+    lastMsgTs = messages[messages.length-1].ts;
+    // Mensajes entrantes de otros → notif + badge por usuario
+    const incoming = fresh.filter(msg => msg.from.toLowerCase() !== me.email.toLowerCase());
+    incoming.forEach(function(msg){
+      if (msg.meetLink) return;
+      var key = msg.to === 'all' ? 'all' : msg.from;
+      // Si la conversación entrante NO es la que tengo abierta, marcar no-leído
+      var openKey = currentChat === 'all' ? 'all' : currentChat;
+      if (key.toLowerCase() !== openKey.toLowerCase()) {
+        unreadPerUser[key] = (unreadPerUser[key]||0)+1;
+      }
+    });
+    unreadCount = Object.values(unreadPerUser).reduce(function(a,b){return a+b;},0);
+    var cb = document.getElementById('chatBadge');
+    if (unreadCount > 0) { cb.textContent = unreadCount > 99 ? '99+' : unreadCount; cb.classList.add('show'); }
+    else cb.classList.remove('show');
+    // Popup para el último entrante que no sea de la conversación abierta
+    const lastOther = incoming.filter(msg => !msg.meetLink).pop();
+    if (lastOther) {
+      var lk = lastOther.to === 'all' ? 'all' : lastOther.from;
+      var ok = currentChat === 'all' ? 'all' : currentChat;
+      if (lk.toLowerCase() !== ok.toLowerCase()) {
+        showMsgNotif(lastOther.from, lastOther.text, lastOther.to === 'all' ? 'all' : lastOther.from);
+      }
+    }
+    // Meet entrante
+    const meetMsgs = fresh.filter(msg => msg.meetLink && msg.from.toLowerCase() !== me.email.toLowerCase() && !dismissedMeets.has(msg.meetLink));
+    if (meetMsgs.length) { const last = meetMsgs[meetMsgs.length-1]; showMeetAlert(last.text, last.meetLink); }
+    renderChat();
+  } catch(e){ console.warn('msg refresh fail', e); }
 }
 
 async function refresh() {
@@ -1097,12 +1150,12 @@ async function refresh() {
             }
           }
         }
-        // Check si hay Meet en nuevos mensajes
-        const meetMsgs = m.messages.filter(msg => msg.meetLink && msg.from.toLowerCase() !== me.email.toLowerCase());
-        if (meetMsgs.length) {
-          const last = meetMsgs[meetMsgs.length-1];
-          showMeetAlert(last.text, last.meetLink);
-        }
+      } // end if currentTab !== chat
+      // Check si hay Meet en nuevos mensajes (siempre, esté donde esté el usuario)
+      const meetMsgs = m.messages.filter(msg => msg.meetLink && msg.from.toLowerCase() !== me.email.toLowerCase() && !dismissedMeets.has(msg.meetLink));
+      if (meetMsgs.length) {
+        const last = meetMsgs[meetMsgs.length-1];
+        showMeetAlert(last.text, last.meetLink);
       }
       renderChat();
       } // end fresh.length
@@ -1161,18 +1214,22 @@ function shiftOfflineMs() {
    ╚══════════════════════════════════════════════════════════════╝ */
 
 function showMeetAlert(text, link) {
+  // No reaparecer si el usuario ya la dio por finalizada
+  if (link && dismissedMeets.has(link)) return;
   meetAlertLink_ = link;
-  document.getElementById('meetAlertText').textContent = text || 'Nueva videollamada disponible';
+  document.getElementById('meetAlertText').textContent = text || 'Videollamada activa';
   const a = document.getElementById('meetAlertLink');
   a.href = link || '#';
   document.getElementById('meetAlert').classList.add('show');
-  // Auto-dismiss en 30s
-  clearTimeout(showMeetAlert._t);
-  showMeetAlert._t = setTimeout(dismissMeetAlert, 30000);
 }
 function dismissMeetAlert() {
+  // Finalizar definitivamente: recordar este link para no volver a mostrarlo
+  if (meetAlertLink_) {
+    dismissedMeets.add(meetAlertLink_);
+    try { localStorage.setItem('neostat_dismissed_meets', JSON.stringify([...dismissedMeets])); } catch(e){}
+  }
   document.getElementById('meetAlert').classList.remove('show');
-  clearTimeout(showMeetAlert._t);
+  meetAlertLink_ = null;
 }
 
 /* ╔══════════════════════════════════════════════════════════════╗
@@ -1612,6 +1669,10 @@ function rebuildChatTabs() {
 }
 function setChat(target) {
   currentChat = target;
+  // Si el popup flotante apunta a esta conversación, cerrarlo
+  if (_msgNotifTarget && (_msgNotifTarget === target || (target !== 'all' && _msgNotifTarget.toLowerCase && _msgNotifTarget.toLowerCase() === target.toLowerCase()))) {
+    dismissMsgNotif();
+  }
   // Clear unread for this chat
   var key = target === 'all' ? 'all' : target;
   if (unreadPerUser[key]) { delete unreadPerUser[key]; }
@@ -1661,9 +1722,31 @@ async function sendChatMessage() {
   const text = ta.value.trim();
   if (!text) return;
   ta.value = ''; ta.style.height = 'auto';
+  // Pintado optimista inmediato (se siente instantáneo)
+  const optimistic = { ts: Date.now(), from: me.email, to: currentChat, text: text, meetLink: '' };
+  messages.push(optimistic);
+  lastMsgTs = optimistic.ts;
+  renderChat();
   const r = await apiPost('sendMessage', { from: me.email, to: currentChat, text });
-  if (!r.ok) toast('Error: '+r.error);
-  else refresh();
+  if (!r.ok) {
+    toast('Error al enviar: ' + r.error);
+    // Revertir el optimista si falló
+    messages = messages.filter(x => x !== optimistic);
+    renderChat();
+    return;
+  }
+  // Sincroniza solo mensajes (ligero), no el status completo
+  try {
+    const m = await api('messages', { since: 0 });
+    if (m.ok && m.messages) {
+      const keys = new Set(messages.filter(x => x !== optimistic).map(x => x.ts + '_' + x.from));
+      messages = messages.filter(x => x !== optimistic);
+      m.messages.forEach(msg => { if (!keys.has(msg.ts + '_' + msg.from)) messages.push(msg); });
+      if (messages.length > 200) messages = messages.slice(-200);
+      lastMsgTs = messages.length ? messages[messages.length-1].ts : lastMsgTs;
+      renderChat();
+    }
+  } catch(e){}
 }
 
 async function createMeetForCurrent() {
@@ -1896,10 +1979,15 @@ function switchTab(tab) {
   if (tab === 'admin') renderAdmin();
   if (tab === 'master') renderMaster();
   if (tab === 'chat') {
+    // Limpiar no-leídos de la conversación que se está abriendo
+    var key = currentChat === 'all' ? 'all' : currentChat;
+    if (unreadPerUser[key]) delete unreadPerUser[key];
+    unreadCount = Object.values(unreadPerUser).reduce(function(a,b){return a+b;},0);
+    var cb = document.getElementById('chatBadge');
+    if (unreadCount > 0) { cb.textContent = unreadCount > 99 ? '99+' : unreadCount; cb.classList.add('show'); }
+    else cb.classList.remove('show');
     rebuildChatTabs();
-    // Resetear badge
-    unreadCount = 0;
-    document.getElementById('chatBadge').classList.remove('show');
+    renderChat();
   }
   if (tab === 'permisos') loadPermisos();
 }
@@ -2222,7 +2310,7 @@ function showMsgNotif(from, text, to) {
   el.style.animation = 'none';
   setTimeout(function(){ el.style.animation = 'slideInRight .25s ease'; }, 10);
   clearTimeout(_msgNotifTimer);
-  _msgNotifTimer = setTimeout(dismissMsgNotif, 5000);
+  // Permanece en pantalla hasta que el usuario lo cierre o lo abra
 }
 
 function dismissMsgNotif() {
