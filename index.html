@@ -283,6 +283,9 @@ input,select,textarea{font-family:inherit;color:inherit;font-size:inherit}
 .chat-tab[data-state="comida"] .dot{background:var(--comida)}
 .chat-tab[data-state="bano"] .dot{background:var(--bano)}
 .chat-tab[data-state="break"] .dot{background:var(--brk)}
+.chat-tab{position:relative}
+.chat-tab .ct-ico{font-weight:700;opacity:.7;margin-right:1px}
+.ct-badge{position:absolute;top:-4px;right:-3px;background:#ef4444;color:#fff;border-radius:999px;font-size:9px;font-family:var(--mono);font-weight:700;min-width:16px;height:16px;padding:0 4px;display:flex;align-items:center;justify-content:center;line-height:1;border:2px solid var(--bg)}
 
 .chat-list{overflow-y:auto;padding:8px 2px;display:flex;flex-direction:column;gap:10px}
 .chat-list::-webkit-scrollbar{width:4px}
@@ -832,10 +835,20 @@ let currentAdminSub = 'agentes';
 let pollTimer = null;
 let liveTimer = null;
 let sessionStart = null;      // persistida en localStorage
-let unreadCount = 0;
-let unreadPerUser = {}; // email -> count
 let bathAlertSent = false;    // para no enviar dos veces en el mismo turno de baño
 let meetAlertLink_ = null;
+
+/* ── MODELO DE NOTIFICACIONES (estilo Teams) ──────────────────────
+   - lastSeen[conv]  = ts del último mensaje VISTO en cada conversación (persistido)
+   - connectedAt     = momento en que esta pestaña empezó a escuchar en vivo
+                       (mensajes anteriores = historial → NUNCA disparan pop-up)
+   - El badge = cuántos mensajes hay sin ver, comparando contra lastSeen.
+*/
+let lastSeen = (function(){ try { return JSON.parse(localStorage.getItem('neostat_last_seen')||'{}'); } catch(e){ return {}; } })();
+let connectedAt = 0;          // se fija al terminar la carga inicial
+let initialLoadDone = false;  // true tras pintar el historial una vez
+function saveLastSeen(){ try { localStorage.setItem('neostat_last_seen', JSON.stringify(lastSeen)); } catch(e){} }
+function convKey(msg){ return msg.to === 'all' ? 'all' : (msg.from.toLowerCase() === me.email.toLowerCase() ? msg.to.toLowerCase() : msg.from.toLowerCase()); }
 let dismissedMeets = new Set((function(){ try { return JSON.parse(localStorage.getItem('neostat_dismissed_meets')||'[]'); } catch(e){ return []; } })());
 
 const isMobile = () => window.innerWidth < 900;
@@ -1013,7 +1026,28 @@ async function bootstrap(){
   renderStateGrid();
   setupChatInputAutoresize();
 
-  await refresh();
+  // ── Carga inicial SILENCIOSA del historial ──
+  // Trae estados + mensajes, los pinta, calcula badge contra lastSeen,
+  // pero NO dispara pop-ups (todo esto es historial, no "nuevo").
+  await refreshStatus();
+
+  // ── ONLINE AUTOMÁTICO (modelo híbrido) ──
+  // Al entrar con la ventana visible, el agente pasa a online automáticamente,
+  // salvo que ya esté en una pausa manual (comida/baño/break).
+  if (me.rol === 'agente') {
+    const mine = meAgent();
+    const pausas = ['comida','bano','break'];
+    if (!mine || !pausas.includes(mine.estado)) {
+      await apiPost('changeState', { email: me.email, newState: 'online' }).catch(()=>{});
+      await refreshStatus();
+    }
+  }
+
+  await pullMessages(true);
+  rebuildChatTabs();
+  // A partir de AHORA, lo que llegue se considera "en vivo".
+  connectedAt = Date.now();
+  initialLoadDone = true;
   startPolling();
 }
 
@@ -1047,127 +1081,127 @@ function startPolling() {
   if (liveTimer) clearInterval(liveTimer);
   pollTimer = setInterval(() => {
     if (document.visibilityState !== 'visible') return;
-    // Chat abierto → refresco más ágil de mensajes; resto → ciclo completo cada 7s
+    // En chat: refresco ágil de mensajes (cada tick). Estados cada 3 ticks.
     if (currentTab === 'chat') {
-      refreshMessagesOnly();
-      // Cada 2do tick en chat, refrescar también estados
+      pullMessages(false);
       startPolling._n = (startPolling._n||0)+1;
-      if (startPolling._n % 3 === 0) refresh();
+      if (startPolling._n % 3 === 0) refreshStatus();
     } else {
-      refresh();
+      pullMessages(false);
+      refreshStatus();
     }
-  }, 2500);
+  }, 3000);
   liveTimer = setInterval(() => {
     if (document.visibilityState === 'visible') { renderTimers(); checkBathAlert(); }
   }, 1000);
 }
 
-// Refresco ligero solo de mensajes — mantiene el chat dinámico sin recargar todo
-async function refreshMessagesOnly() {
+/* Trae estados de agentes (sin tocar mensajes). Heartbeat híbrido aquí. */
+async function refreshStatus() {
   try {
-    const m = await api('messages', { since: lastMsgTs });
-    if (!m.ok || !m.messages || !m.messages.length) return;
-    const existingKeys = new Set(messages.map(x => x.ts + '_' + x.from));
-    const fresh = m.messages.filter(x => !existingKeys.has(x.ts + '_' + x.from));
-    if (!fresh.length) return;
-    messages = messages.concat(fresh);
-    if (messages.length > 200) messages = messages.slice(-200);
-    lastMsgTs = messages[messages.length-1].ts;
-    // Mensajes entrantes de otros → notif + badge por usuario
-    const incoming = fresh.filter(msg => msg.from.toLowerCase() !== me.email.toLowerCase());
-    incoming.forEach(function(msg){
-      if (msg.meetLink) return;
-      var key = msg.to === 'all' ? 'all' : msg.from;
-      // Si la conversación entrante NO es la que tengo abierta, marcar no-leído
-      var openKey = currentChat === 'all' ? 'all' : currentChat;
-      if (key.toLowerCase() !== openKey.toLowerCase()) {
-        unreadPerUser[key] = (unreadPerUser[key]||0)+1;
-      }
-    });
-    unreadCount = Object.values(unreadPerUser).reduce(function(a,b){return a+b;},0);
-    var cb = document.getElementById('chatBadge');
-    if (unreadCount > 0) { cb.textContent = unreadCount > 99 ? '99+' : unreadCount; cb.classList.add('show'); }
-    else cb.classList.remove('show');
-    // Popup para el último entrante que no sea de la conversación abierta
-    const lastOther = incoming.filter(msg => !msg.meetLink).pop();
-    if (lastOther) {
-      var lk = lastOther.to === 'all' ? 'all' : lastOther.from;
-      var ok = currentChat === 'all' ? 'all' : currentChat;
-      if (lk.toLowerCase() !== ok.toLowerCase()) {
-        showMsgNotif(lastOther.from, lastOther.text, lastOther.to === 'all' ? 'all' : lastOther.from);
-      }
+    const s = await api('status');
+    if (s.ok) { agents = s.agents; renderAll(); }
+    // Heartbeat híbrido: solo late si la ventana está VISIBLE (pantalla encendida + app al frente).
+    // Pantalla apagada / pestaña oculta / app cerrada → sin heartbeat → backend marca offline (salida).
+    if (me.rol === 'agente' && document.visibilityState === 'visible') {
+      apiPost('heartbeat', { email: me.email }).catch(()=>{});
     }
-    // Meet entrante
-    const meetMsgs = fresh.filter(msg => msg.meetLink && msg.from.toLowerCase() !== me.email.toLowerCase() && !dismissedMeets.has(msg.meetLink));
-    if (meetMsgs.length) { const last = meetMsgs[meetMsgs.length-1]; showMeetAlert(last.text, last.meetLink); }
-    renderChat();
-  } catch(e){ console.warn('msg refresh fail', e); }
+  } catch(e){ console.warn('status fail', e); }
 }
 
-async function refresh() {
+/* ── ÚNICA fuente de verdad para mensajes ──────────────────────────
+   isInitial=true  → carga el historial, lo pinta, calcula no-leídos
+                     contra lastSeen. NUNCA dispara pop-up ni sonido.
+   isInitial=false → solo lo llegado DESPUÉS de connectedAt dispara
+                     pop-up/badge. Lo viejo solo se agrega al hilo.       */
+async function pullMessages(isInitial) {
   try {
-    const [s, m] = await Promise.all([
-      api('status'),
-      api('messages', { since: lastMsgTs })
-    ]);
-    if (s.ok) { agents = s.agents; renderAll(); }
-    if (m.ok && m.messages.length) {
-      const prev = messages.length;
-      // Deduplicar por ts+from para evitar duplicados
-      const existingKeys = new Set(messages.map(x => x.ts + '_' + x.from));
-      const fresh = m.messages.filter(x => !existingKeys.has(x.ts + '_' + x.from));
-      if (fresh.length) {
-        messages = messages.concat(fresh);
-        if (messages.length > 200) messages = messages.slice(-200);
-        lastMsgTs = messages[messages.length-1].ts;
-      // Badge: cuenta nuevos mensajes no vistos
-      if (currentTab !== 'chat') {
-        const newMsgs = messages.length - prev;
-        if (newMsgs > 0) {
-          // Solo mensajes del canal actual visible
-          const allNew = m.messages;
-          const relNew = allNew.filter(msg => {
-            if (msg.from.toLowerCase() === me.email.toLowerCase()) return false;
-            return msg.to === 'all' || msg.to.toLowerCase() === me.email.toLowerCase() || msg.from.toLowerCase() === me.email.toLowerCase();
-          });
-          if (relNew.length > 0) {
-            unreadCount += relNew.length;
-            const badge = document.getElementById('chatBadge');
-            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
-            badge.classList.add('show');
-            // Track per-user unread
-            relNew.forEach(function(msg) {
-              if (!msg.meetLink) {
-                var key = msg.to === 'all' ? 'all' : msg.from;
-                unreadPerUser[key] = (unreadPerUser[key] || 0) + 1;
-              }
-            });
-            rebuildChatTabs();
-            // Show floating notification for last new message
-            const lastNew = relNew[relNew.length - 1];
-            if (!lastNew.meetLink) {
-              showMsgNotif(lastNew.from, lastNew.text, lastNew.to === 'all' ? 'all' : lastNew.from);
-            }
-          }
-        }
-      } // end if currentTab !== chat
-      // Check si hay Meet en nuevos mensajes (siempre, esté donde esté el usuario)
-      const meetMsgs = m.messages.filter(msg => msg.meetLink && msg.from.toLowerCase() !== me.email.toLowerCase() && !dismissedMeets.has(msg.meetLink));
-      if (meetMsgs.length) {
-        const last = meetMsgs[meetMsgs.length-1];
-        showMeetAlert(last.text, last.meetLink);
-      }
-      renderChat();
-      } // end fresh.length
+    const m = await api('messages', { since: lastMsgTs });
+    if (!m.ok || !m.messages) return;
+    const existing = new Set(messages.map(x => x.ts + '_' + x.from));
+    const fresh = m.messages.filter(x => !existing.has(x.ts + '_' + x.from));
+    if (fresh.length) {
+      messages = messages.concat(fresh);
+      if (messages.length > 200) messages = messages.slice(-200);
+      lastMsgTs = messages[messages.length-1].ts;
     }
-    if (me.rol === 'agente') apiPost('heartbeat', { email: me.email });
-  } catch(e) { console.warn('refresh fail', e); }
+
+    const meE = me.email.toLowerCase();
+    // Mensajes entrantes (de otros) que son EN VIVO (posteriores a la conexión) y aún no vistos
+    const liveIncoming = fresh.filter(msg =>
+      msg.from.toLowerCase() !== meE &&
+      !msg.meetLink &&
+      msg.ts > connectedAt
+    );
+
+    // Pop-up SOLO en vivo, breve y silencioso, y solo si NO estás viendo esa conversación
+    if (!isInitial && liveIncoming.length) {
+      const openKey = currentChat === 'all' ? 'all' : currentChat.toLowerCase();
+      const lookingAtChat = currentTab === 'chat';
+      const last = liveIncoming[liveIncoming.length - 1];
+      const lk = convKey(last);
+      if (!(lookingAtChat && lk === openKey)) {
+        showMsgNotif(last.from, last.text, lk);
+      }
+      // Los que llegan de la conversación abierta se marcan vistos al instante
+      if (lookingAtChat) {
+        liveIncoming.forEach(msg => { if (convKey(msg) === openKey) markSeen(openKey); });
+      }
+    }
+
+    // Meet en vivo (no históricos, no descartados)
+    const meetMsgs = fresh.filter(msg =>
+      msg.meetLink && msg.from.toLowerCase() !== meE &&
+      !dismissedMeets.has(msg.meetLink) &&
+      (isInitial ? false : msg.ts > connectedAt)
+    );
+    if (meetMsgs.length) { const lastMeet = meetMsgs[meetMsgs.length-1]; showMeetAlert(lastMeet.text, lastMeet.meetLink); }
+
+    updateBadge();
+    if (currentTab === 'chat') renderChat();
+    else rebuildChatTabs();
+  } catch(e){ console.warn('pullMessages fail', e); }
+}
+
+/* Recalcula el badge total = nº de mensajes posteriores a lastSeen por conversación */
+function updateBadge() {
+  const meE = me.email.toLowerCase();
+  let total = 0;
+  messages.forEach(msg => {
+    if (msg.from.toLowerCase() === meE) return;
+    if (msg.meetLink) return;
+    const k = convKey(msg);
+    if (msg.ts > (lastSeen[k] || 0)) total++;
+  });
+  const cb = document.getElementById('chatBadge');
+  if (total > 0) { cb.textContent = total > 99 ? '99+' : total; cb.classList.add('show'); }
+  else cb.classList.remove('show');
+}
+
+/* No-leídos de UNA conversación (para el puntito del tab) */
+function unreadOf(k) {
+  const meE = me.email.toLowerCase();
+  let n = 0;
+  messages.forEach(msg => {
+    if (msg.from.toLowerCase() === meE || msg.meetLink) return;
+    if (convKey(msg) === k && msg.ts > (lastSeen[k] || 0)) n++;
+  });
+  return n;
+}
+
+/* Marca una conversación como vista hasta el último mensaje conocido */
+function markSeen(k) {
+  let maxTs = lastSeen[k] || 0;
+  messages.forEach(msg => { if (convKey(msg) === k && msg.ts > maxTs) maxTs = msg.ts; });
+  lastSeen[k] = maxTs;
+  saveLastSeen();
+  updateBadge();
 }
 
 async function softRefresh() {
   const btn = document.getElementById('refreshBtn');
   btn.classList.add('spinning');
-  await refresh();
+  await Promise.all([refreshStatus(), pullMessages(false)]);
   setTimeout(() => btn.classList.remove('spinning'), 500);
 }
 
@@ -1214,7 +1248,6 @@ function shiftOfflineMs() {
    ╚══════════════════════════════════════════════════════════════╝ */
 
 function showMeetAlert(text, link) {
-  // No reaparecer si el usuario ya la dio por finalizada
   if (link && dismissedMeets.has(link)) return;
   meetAlertLink_ = link;
   document.getElementById('meetAlertText').textContent = text || 'Videollamada activa';
@@ -1223,7 +1256,6 @@ function showMeetAlert(text, link) {
   document.getElementById('meetAlert').classList.add('show');
 }
 function dismissMeetAlert() {
-  // Finalizar definitivamente: recordar este link para no volver a mostrarlo
   if (meetAlertLink_) {
     dismissedMeets.add(meetAlertLink_);
     try { localStorage.setItem('neostat_dismissed_meets', JSON.stringify([...dismissedMeets])); } catch(e){}
@@ -1492,7 +1524,7 @@ async function changeMyState(newState) {
   if (a) { a.estado = newState; a.desde = Date.now(); renderAgentPanel() }
   const r = await apiPost('changeState', { email: me.email, newState });
   if (!r.ok) toast('Error: '+r.error);
-  refresh();
+  refreshStatus();
 }
 
 async function logAct(type) {
@@ -1649,41 +1681,36 @@ async function handlePerm(action, id) {
    ║  CHAT                                                        ║
    ╚══════════════════════════════════════════════════════════════╝ */
 
+function chatBadgeHtml(n) {
+  if (!n) return '';
+  return `<span class="ct-badge">${n > 99 ? '99+' : n}</span>`;
+}
 function rebuildChatTabs() {
   const tabs = document.getElementById('chatTabs');
-  const allUnread = unreadPerUser['all'] || 0;
-  let html = `<button class="chat-tab ${currentChat==='all'?'active':''}" onclick="setChat('all')" style="position:relative">
-    ${allUnread > 0 ? `<span style="position:absolute;top:2px;right:4px;background:#ef4444;color:#fff;border-radius:999px;font-size:9px;font-family:var(--mono);font-weight:700;padding:1px 5px;line-height:14px">${allUnread}</span>` : ''}
-    💬 Grupo
+  if (!tabs) return;
+  let html = `<button class="chat-tab ${currentChat==='all'?'active':''}" onclick="setChat('all')">
+    ${chatBadgeHtml(unreadOf('all'))}<span class="ct-ico">#</span>Grupo
   </button>`;
   agentsRoster.filter(a => a.activo && a.email.toLowerCase() !== me.email.toLowerCase()).forEach(a => {
     const ag = agents.find(x => x.email.toLowerCase() === a.email.toLowerCase());
-    const st = ag ? ag.estado : (a.rol==='supervisor' ? 'online' : 'offline');
-    const uCount = unreadPerUser[a.email.toLowerCase()] || unreadPerUser[a.email] || 0;
-    html += `<button class="chat-tab ${currentChat===a.email?'active':''}" data-state="${st}" onclick="setChat('${esc(a.email)}')" style="position:relative">
-      ${uCount > 0 ? `<span style="position:absolute;top:2px;right:4px;background:#ef4444;color:#fff;border-radius:999px;font-size:9px;font-family:var(--mono);font-weight:700;padding:1px 5px;line-height:14px">${uCount}</span>` : ''}
-      <span class="dot"></span>${esc(a.nombre.split(' ')[0])}
+    const st = ag ? ag.estado : (a.rol==='supervisor' || a.rol==='master' ? 'offline' : 'offline');
+    const k = a.email.toLowerCase();
+    html += `<button class="chat-tab ${currentChat.toLowerCase()===k?'active':''}" data-state="${st}" onclick="setChat('${esc(a.email)}')">
+      ${chatBadgeHtml(unreadOf(k))}<span class="dot"></span>${esc(a.nombre.split(' ')[0])}
     </button>`;
   });
   tabs.innerHTML = html;
 }
 function setChat(target) {
   currentChat = target;
-  // Si el popup flotante apunta a esta conversación, cerrarlo
-  if (_msgNotifTarget && (_msgNotifTarget === target || (target !== 'all' && _msgNotifTarget.toLowerCase && _msgNotifTarget.toLowerCase() === target.toLowerCase()))) {
-    dismissMsgNotif();
-  }
-  // Clear unread for this chat
-  var key = target === 'all' ? 'all' : target;
-  if (unreadPerUser[key]) { delete unreadPerUser[key]; }
-  // Recalc total badge
-  unreadCount = Object.values(unreadPerUser).reduce(function(a,b){return a+b;},0);
-  var badge = document.getElementById('chatBadge');
-  if (unreadCount > 0) { badge.textContent = unreadCount > 99 ? '99+' : unreadCount; badge.classList.add('show'); }
-  else badge.classList.remove('show');
-  rebuildChatTabs(); renderChat();
+  const k = target === 'all' ? 'all' : target.toLowerCase();
+  // Abrir una conversación = marcarla vista (quita su badge) y cerrar popup si apuntaba aquí
+  markSeen(k);
+  if (_msgNotifTarget && (_msgNotifTarget.toLowerCase ? _msgNotifTarget.toLowerCase() : _msgNotifTarget) === k) dismissMsgNotif();
+  rebuildChatTabs();
+  renderChat();
 }
-function openChatWith(email) { currentChat = email; switchTab('chat'); setTimeout(rebuildChatTabs, 50); }
+function openChatWith(email) { switchTab('chat'); setChat(email); }
 
 function renderChat() {
   rebuildChatTabs();
@@ -1715,6 +1742,8 @@ function renderChat() {
     `;
   }).join('');
   list.scrollTop = list.scrollHeight;
+  // Estás viendo esta conversación → marcarla vista (sin badge fantasma)
+  markSeen(currentChat === 'all' ? 'all' : currentChat.toLowerCase());
 }
 
 async function sendChatMessage() {
@@ -1722,31 +1751,20 @@ async function sendChatMessage() {
   const text = ta.value.trim();
   if (!text) return;
   ta.value = ''; ta.style.height = 'auto';
-  // Pintado optimista inmediato (se siente instantáneo)
-  const optimistic = { ts: Date.now(), from: me.email, to: currentChat, text: text, meetLink: '' };
+  // Pintado optimista inmediato
+  const optimistic = { ts: Date.now(), from: me.email, to: currentChat, text: text, meetLink: '', _opt: true };
   messages.push(optimistic);
-  lastMsgTs = optimistic.ts;
   renderChat();
   const r = await apiPost('sendMessage', { from: me.email, to: currentChat, text });
   if (!r.ok) {
     toast('Error al enviar: ' + r.error);
-    // Revertir el optimista si falló
     messages = messages.filter(x => x !== optimistic);
     renderChat();
     return;
   }
-  // Sincroniza solo mensajes (ligero), no el status completo
-  try {
-    const m = await api('messages', { since: 0 });
-    if (m.ok && m.messages) {
-      const keys = new Set(messages.filter(x => x !== optimistic).map(x => x.ts + '_' + x.from));
-      messages = messages.filter(x => x !== optimistic);
-      m.messages.forEach(msg => { if (!keys.has(msg.ts + '_' + msg.from)) messages.push(msg); });
-      if (messages.length > 200) messages = messages.slice(-200);
-      lastMsgTs = messages.length ? messages[messages.length-1].ts : lastMsgTs;
-      renderChat();
-    }
-  } catch(e){}
+  // Quitar el optimista y traer el real desde el backend (ligero, solo mensajes)
+  messages = messages.filter(x => x !== optimistic);
+  await pullMessages(false);
 }
 
 async function createMeetForCurrent() {
@@ -1755,14 +1773,14 @@ async function createMeetForCurrent() {
   const r = await apiPost('createMeet', { from: me.email, to: currentChat });
   if (!r.ok) { toast('Error: '+r.error); return }
   window.open(r.meetLink, '_blank');
-  refresh();
+  pullMessages(false);
 }
 async function quickMeet(targetEmail) {
   toast('Creando Meet…');
   const r = await apiPost('createMeet', { from: me.email, to: targetEmail });
   if (!r.ok) { toast('Error: '+r.error); return }
   window.open(r.meetLink, '_blank');
-  refresh();
+  pullMessages(false);
 }
 
 function setupChatInputAutoresize(){
@@ -1897,20 +1915,20 @@ async function saveAgent(existingEmail) {
   }
   if (!r.ok) { toast('Error: '+r.error); return }
   toast(existingEmail ? 'Agente actualizado' : 'Agente agregado');
-  closeModal(); renderAdmin(); refresh();
+  closeModal(); renderAdmin(); refreshStatus();
 }
 
 function confirmDisableAgent(email, nombre) {
   if (!confirm(`¿Desactivar a ${nombre}? Sus datos históricos se conservan.`)) return;
   apiPost('removeAgent', { supervisor: me.email, targetEmail: email }).then(r => {
     if (!r.ok) toast('Error: '+r.error);
-    else { toast('Agente desactivado'); renderAdmin(); refresh(); }
+    else { toast('Agente desactivado'); renderAdmin(); refreshStatus(); }
   });
 }
 async function reactivateAgent(email) {
   const r = await apiPost('updateAgent', { supervisor: me.email, targetEmail: email, activo: true });
   if (!r.ok) toast('Error: '+r.error);
-  else { toast('Agente reactivado'); renderAdmin(); refresh(); }
+  else { toast('Agente reactivado'); renderAdmin(); refreshStatus(); }
 }
 
 function openCampaignForm(existing) {
@@ -1979,15 +1997,8 @@ function switchTab(tab) {
   if (tab === 'admin') renderAdmin();
   if (tab === 'master') renderMaster();
   if (tab === 'chat') {
-    // Limpiar no-leídos de la conversación que se está abriendo
-    var key = currentChat === 'all' ? 'all' : currentChat;
-    if (unreadPerUser[key]) delete unreadPerUser[key];
-    unreadCount = Object.values(unreadPerUser).reduce(function(a,b){return a+b;},0);
-    var cb = document.getElementById('chatBadge');
-    if (unreadCount > 0) { cb.textContent = unreadCount > 99 ? '99+' : unreadCount; cb.classList.add('show'); }
-    else cb.classList.remove('show');
     rebuildChatTabs();
-    renderChat();
+    renderChat(); // renderChat marca vista la conversación actual y actualiza badge
   }
   if (tab === 'permisos') loadPermisos();
 }
@@ -2070,7 +2081,7 @@ function closeModal(){ document.getElementById('modalWrap').classList.remove('op
 async function overrideState(targetEmail, newState){
   const r = await apiPost('overrideState', { supervisor: me.email, targetEmail, newState });
   if (!r.ok) { toast('Error: '+r.error); return }
-  toast('Estado actualizado'); closeModal(); refresh();
+  toast("Estado actualizado"); closeModal(); refreshStatus();
 }
 
 function logout(){
@@ -2078,7 +2089,8 @@ function logout(){
   if (liveTimer) clearInterval(liveTimer);
   // Limpiar sesión persistida intencionalmente
   if (me) localStorage.removeItem('neostat_sess_' + me.email);
-  me = null; agents = []; messages = []; lastMsgTs = 0; activeCampaign = null; sessionStart = null; unreadCount = 0; bathAlertSent = false;
+  me = null; agents = []; messages = []; lastMsgTs = 0; activeCampaign = null; sessionStart = null; bathAlertSent = false;
+  connectedAt = 0; initialLoadDone = false;
   document.getElementById('app').classList.add('hidden');
   document.getElementById('login').classList.remove('hidden');
   closeModal();
@@ -2293,7 +2305,7 @@ async function saveCampaignMaster(existingId) {
   renderMaster();
 }
 
-/* ════ MSG NOTIFICATION ════ */
+/* ════ MSG NOTIFICATION (estilo Teams: breve y silenciosa) ════ */
 var _msgNotifTimer = null;
 var _msgNotifTarget = 'all';
 
@@ -2301,16 +2313,16 @@ function showMsgNotif(from, text, to) {
   _msgNotifTarget = to || 'all';
   var ag = agentsRoster.find(function(a){ return a.email.toLowerCase() === from.toLowerCase(); });
   var name = ag ? ag.nombre : from;
-  var initial = name.charAt(0).toUpperCase();
-  document.getElementById('msgNotifAvatar').textContent = initial;
+  document.getElementById('msgNotifAvatar').textContent = name.charAt(0).toUpperCase();
   document.getElementById('msgNotifName').textContent = name;
   document.getElementById('msgNotifText').textContent = text.length > 60 ? text.slice(0,60)+'…' : text;
   var el = document.getElementById('msgNotif');
   el.style.display = 'block';
   el.style.animation = 'none';
-  setTimeout(function(){ el.style.animation = 'slideInRight .25s ease'; }, 10);
+  setTimeout(function(){ el.style.animation = 'slideInRight .22s ease'; }, 10);
+  // Breve: se va sola a los 4s (silenciosa, no estorba)
   clearTimeout(_msgNotifTimer);
-  // Permanece en pantalla hasta que el usuario lo cierre o lo abra
+  _msgNotifTimer = setTimeout(dismissMsgNotif, 4000);
 }
 
 function dismissMsgNotif() {
@@ -2319,12 +2331,31 @@ function dismissMsgNotif() {
 }
 
 function goToMsgNotif() {
-  dismissMsgNotif();
   var target = _msgNotifTarget === 'all' ? 'all' : _msgNotifTarget;
-  currentChat = target;
+  dismissMsgNotif();
   switchTab('chat');
-  setTimeout(function(){ rebuildChatTabs(); renderChat(); }, 50);
+  setChat(target);
 }
+
+// ── Modelo híbrido: ventana visible = actividad ──
+// Al volver a primer plano (desbloquear pantalla / reabrir pestaña), el agente
+// se repone online si el sistema lo había marcado offline por inactividad
+// (y no está en una pausa manual). También refresca de inmediato.
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState !== 'visible' || !me) return;
+  if (me.rol === 'agente') {
+    const mine = meAgent();
+    const pausas = ['comida','bano','break'];
+    if (mine && mine.estado === 'offline') {
+      apiPost('changeState', { email: me.email, newState: 'online' }).then(()=>refreshStatus()).catch(()=>{});
+    } else {
+      apiPost('heartbeat', { email: me.email }).catch(()=>{});
+    }
+  }
+  // Refresco inmediato al volver (mensajes en vivo siguen sin rebotar gracias a connectedAt)
+  pullMessages(false);
+  refreshStatus();
+});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js?v=2').catch(()=>{}); });
